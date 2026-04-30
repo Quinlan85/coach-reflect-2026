@@ -11,7 +11,7 @@ const SP_PIN = "1810";
 
 const RATINGS = [
   { key: "Preparation", desc: "Game plan, training sessions, pre-performance routine" },
-  { key: "Communication", desc: "How clearly roles, responsibilities and expectations were communicated" },
+  { key: "Communication", desc: "How clearly roles and responsibilities were communicated" },
   { key: "Tactical Setup", desc: "Decisions before and during the game — structure, adjustments, subs" },
   { key: "Emotional Control", desc: "Your composure on the sideline — especially under pressure" },
 ];
