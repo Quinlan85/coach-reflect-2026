@@ -10,7 +10,7 @@ const STORAGE_KEY = "cq_coach_reviews";
 const SP_PIN = "1810";
 
 const RATINGS = [
-  { key: "Preparation", desc: "Game plan clarity, session planning, mental preparation of players" },
+  { key: "Preparation", desc: "Game plan, training sessions, pre-performance routine" },
   { key: "Communication", desc: "Clarity of message, tone, how well you delivered roles and tactics" },
   { key: "Tactical Setup", desc: "Decisions before and during the game — structure, adjustments, subs" },
   { key: "Player Role Clarity", desc: "Did every player know their job and feel confident in it?" },
@@ -21,8 +21,8 @@ const RATING_LABELS = { 1:"Poor",2:"Poor",3:"Needs Work",4:"Needs Work",5:"Avera
 
 const WENT_WELL_PROMPTS = [
   "Clear pre-match message", "Good warm-up energy", "Players knew their roles",
-  "Strong half-time talk", "Good sideline composure", "Effective substitutions",
-  "Positive body language", "Players responded to feedback", "Good preparation",
+  "Effective half-time talk", "Good sideline composure", "Effective substitutions",
+  "Positive body language", "Players responded to feedback", "Good preparation", "Supported players post-game",
   "Created a challenge environment"
 ];
 
@@ -437,7 +437,7 @@ export default function App() {
                 {[
                   {key:"keep_doing", label:"✓ KEEP DOING", sub:"What must you maintain?", ph:"e.g. Clear pre-match message, positive body language..."},
                   {key:"will_change", label:"→ WILL CHANGE", sub:"What will you work on?", ph:"e.g. Composure on the sideline, communication at half-time..."},
-                  {key:"how_when", label:"◆ HOW & WHEN", sub:"How and when will you work on it?", ph:"e.g. Review this with Conor at next session..."}
+                  {key:"how_when", label:"◆ HOW & WHEN", sub:"How and when will you work on it?", ph:"e.g. Review this with management team or sport psychologist at next session..."}
                 ].map(f => (
                   <div key={f.key} style={{ marginBottom:18 }}>
                     <div style={{ marginBottom:6 }}>
