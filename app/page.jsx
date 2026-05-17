@@ -333,7 +333,7 @@ export default function App() {
 
   if (screen === "home") return (
     <div style={{ minHeight:"100vh", background:"#0A1520", display:"flex", flexDirection:"column" }}>
-      <style>{`* { box-sizing: border-box; } button:active { opacity: 0.8; }`}</style>
+      <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.8; }`}</style>
       <Header />
       <div style={{ flex:1, padding:"40px 22px", maxWidth:500, margin:"0 auto", width:"100%" }}>
         <div style={{ color:"#ECF0F1", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:6 }}>{savedName ? `Welcome back, ${savedName.split(" ")[0]}.` : "Time to reflect."}</div>
@@ -376,7 +376,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#0A1520", display:"flex", flexDirection:"column" }}>
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #2C3E50; } * { box-sizing: border-box; } button:active { opacity: 0.85; }`}</style>
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #2C3E50; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
       <div style={{ flex:1, padding:"0 22px 110px", maxWidth:500, margin:"0 auto", width:"100%" }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
