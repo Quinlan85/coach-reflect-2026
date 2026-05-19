@@ -332,7 +332,7 @@ export default function App() {
   if (screen === "sp") return <div style={{ minHeight:"100vh", background:"#1A1A1A" }}><style>{`* { box-sizing: border-box; }`}</style><Header /><SPDashboard onBack={() => setScreen("home")} /></div>;
 
   if (screen === "home") return (
-    <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
+    <div style={{ background:"#1A1A1A" }}>
       <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; background: #1A1A1A; } button:active { opacity: 0.8; }`}</style>
       <div style={{ position:"relative", width:"100%", height:320, overflow:"hidden" }}>
         <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
@@ -349,7 +349,7 @@ export default function App() {
           <div style={{ color:"rgba(255,255,255,0.65)", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5 }}>Honest reflection. Better coaching.</div>
         </div>
       </div>
-      <div style={{ flex:1, padding:"24px 22px 32px", maxWidth:500, margin:"0 auto", width:"100%" }}>
+      <div style={{ padding:"24px 22px 20px", maxWidth:500, margin:"0 auto", width:"100%" }}>
         <button onClick={startNew} style={{ width:"100%", padding:18, background:"#F0A500", border:"none", borderRadius:12, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:14, cursor:"pointer", letterSpacing:2, marginBottom:12 }}>START REFLECTION →</button>
         <button onClick={() => setScreen("history")} style={{ width:"100%", padding:16, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:12, color: reviews.length > 0 ? "#CCCCCC" : "#666666", fontFamily:"'Courier New', monospace", fontSize:14, cursor:"pointer", letterSpacing:1, display:"flex", justifyContent:"center", alignItems:"center", gap:10, marginBottom:12 }}>
           <span>MY REVIEWS</span>
