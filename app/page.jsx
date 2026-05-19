@@ -334,8 +334,12 @@ export default function App() {
   if (screen === "home") return (
     <div style={{ minHeight:"100vh", background:"#0A1520", display:"flex", flexDirection:"column" }}>
       <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.8; }`}</style>
+      <div style={{ position:"relative", width:"100%", height:256, overflow:"hidden", flexShrink:0 }}>
+        <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"60%", background:"linear-gradient(to bottom, transparent, #0A1520)" }} />
+      </div>
       <Header />
-      <div style={{ flex:1, padding:"40px 22px", maxWidth:500, margin:"0 auto", width:"100%" }}>
+      <div style={{ flex:1, padding:"24px 22px 40px", maxWidth:500, margin:"0 auto", width:"100%" }}>
         <div style={{ color:"#ECF0F1", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:6 }}>{savedName ? `Welcome back, ${savedName.split(" ")[0]}.` : "Time to reflect."}</div>
         <div style={{ color:"#7F8C8D", fontSize:14, marginBottom:40, fontFamily:"Georgia, serif", lineHeight:1.6 }}>Honest reflection. Better coaching.</div>
         <button onClick={startNew} style={{ width:"100%", padding:18, background:"#2ECC71", border:"none", borderRadius:12, color:"#0D1B2A", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:14, cursor:"pointer", letterSpacing:2, marginBottom:12 }}>START REFLECTION →</button>
