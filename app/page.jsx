@@ -334,11 +334,17 @@ export default function App() {
   if (screen === "home") return (
     <div style={{ minHeight:"100vh", background:"#0A1520", display:"flex", flexDirection:"column" }}>
       <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.8; }`}</style>
-      <div style={{ position:"relative", width:"100%", height:256, overflow:"hidden", flexShrink:0 }}>
+      <div style={{ position:"relative", width:"100%", height:300, overflow:"hidden", flexShrink:0 }}>
         <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, #0A1520 60%)" }} />
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, #0A1520 70%)" }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 22px 20px", display:"flex", alignItems:"flex-end", justifyContent:"space-between", zIndex:2 }}>
+          <div>
+            <div style={{ color:"#2ECC71", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
+            <div style={{ color:"#ECF0F1", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
+          </div>
+          <img src={CQ_LOGO} alt="CQ" style={{ height:44, width:"auto", opacity:0.9 }} />
+        </div>
       </div>
-      <Header />
       <div style={{ flex:1, padding:"24px 22px 40px", maxWidth:500, margin:"0 auto", width:"100%" }}>
         <div style={{ color:"#ECF0F1", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:6 }}>{savedName ? `Welcome back, ${savedName.split(" ")[0]}.` : "Time to reflect."}</div>
         <div style={{ color:"#7F8C8D", fontSize:14, marginBottom:40, fontFamily:"Georgia, serif", lineHeight:1.6 }}>Honest reflection. Better coaching.</div>
