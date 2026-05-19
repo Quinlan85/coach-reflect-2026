@@ -338,12 +338,9 @@ export default function App() {
         <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, #1A1A1A 70%)" }} />
         <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 22px 20px", zIndex:2 }}>
-          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:14 }}>
-            <div>
-              <div style={{ color:"#F0A500", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
-              <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
-            </div>
-            <img src={CQ_LOGO} alt="CQ" style={{ height:44, width:"auto", opacity:0.9 }} />
+          <div style={{ marginBottom:14 }}>
+            <div style={{ color:"#F0A500", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
+            <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
           </div>
           <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:4 }}>Time to reflect.</div>
           <div style={{ color:"rgba(255,255,255,0.65)", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5 }}>Honest reflection. Better coaching.</div>
@@ -372,6 +369,9 @@ export default function App() {
             ))}
           </div>
         )}
+        <div style={{ display:"flex", justifyContent:"center", paddingTop:32, paddingBottom:24 }}>
+          <img src={CQ_LOGO} alt="CQ" style={{ height:66, width:"auto", opacity:0.7 }} />
+        </div>
       </div>
     </div>
   );
