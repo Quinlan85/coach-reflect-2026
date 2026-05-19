@@ -336,7 +336,8 @@ export default function App() {
       <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.8; }`}</style>
       <div style={{ position:"relative", width:"100%", height:256, overflow:"hidden", flexShrink:0 }}>
         <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
-        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"60%", background:"linear-gradient(to bottom, transparent, #0A1520)" }} />
+        <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)" }} />
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"75%", background:"linear-gradient(to bottom, transparent, #0A1520 80%)" }} />
       </div>
       <Header />
       <div style={{ flex:1, padding:"24px 22px 40px", maxWidth:500, margin:"0 auto", width:"100%" }}>
