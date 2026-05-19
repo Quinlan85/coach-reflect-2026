@@ -334,20 +334,22 @@ export default function App() {
   if (screen === "home") return (
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
       <style>{`* { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.8; }`}</style>
-      <div style={{ position:"relative", width:"100%", height:300, overflow:"hidden", flexShrink:0 }}>
+      <div style={{ position:"relative", width:"100%", height:320, overflow:"hidden", flexShrink:0 }}>
         <img src="/hero.jpg" alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center 40%", display:"block" }} />
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, #1A1A1A 70%)" }} />
-        <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 22px 20px", display:"flex", alignItems:"flex-end", justifyContent:"space-between", zIndex:2 }}>
-          <div>
-            <div style={{ color:"#F0A500", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
-            <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
+        <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 22px 20px", zIndex:2 }}>
+          <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:14 }}>
+            <div>
+              <div style={{ color:"#F0A500", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
+              <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
+            </div>
+            <img src={CQ_LOGO} alt="CQ" style={{ height:44, width:"auto", opacity:0.9 }} />
           </div>
-          <img src={CQ_LOGO} alt="CQ" style={{ height:44, width:"auto", opacity:0.9 }} />
+          <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:4 }}>Time to reflect.</div>
+          <div style={{ color:"rgba(255,255,255,0.65)", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5 }}>Honest reflection. Better coaching.</div>
         </div>
       </div>
       <div style={{ flex:1, padding:"24px 22px 40px", maxWidth:500, margin:"0 auto", width:"100%" }}>
-        <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:6 }}>{savedName ? `Welcome back, ${savedName.split(" ")[0]}.` : "Time to reflect."}</div>
-        <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:40, fontFamily:"Georgia, serif", lineHeight:1.6 }}>Honest reflection. Better coaching.</div>
         <button onClick={startNew} style={{ width:"100%", padding:18, background:"#F0A500", border:"none", borderRadius:12, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:14, cursor:"pointer", letterSpacing:2, marginBottom:12 }}>START REFLECTION →</button>
         <button onClick={() => setScreen("history")} style={{ width:"100%", padding:16, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:12, color: reviews.length > 0 ? "#CCCCCC" : "#666666", fontFamily:"'Courier New', monospace", fontSize:14, cursor:"pointer", letterSpacing:1, display:"flex", justifyContent:"center", alignItems:"center", gap:10, marginBottom:12 }}>
           <span>MY REVIEWS</span>
