@@ -270,7 +270,7 @@ function HistoryView({ reviews, onBack, onDelete }) {
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [step, setStep] = useState(0);
-  const [info, setInfo] = useState({ name: "", opposition: "", team: "", date: "" });
+  const [info, setInfo] = useState({ name: "", opposition: "", team: "" });
   const [ratings, setRatings] = useState({});
   const [wentWell, setWentWell] = useState([]);
   const [development, setDevelopment] = useState([]);
@@ -284,7 +284,7 @@ export default function App() {
   const goStep = (n) => { setAnimDir(n > step ? 1 : -1); setStep(n); };
 
   const canProceed = () => {
-    if (step === 0) return info.name.trim() && info.opposition.trim() && info.team.trim() && info.date.trim();
+    if (step === 0) return info.name.trim() && info.opposition.trim() && info.team.trim();
     if (step === 1) return RATINGS.every(r => (ratings[r.key] || 0) > 0);
     if (step === 2) return wentWell.length > 0;
     if (step === 3) return development.length > 0;
@@ -294,8 +294,7 @@ export default function App() {
 
   const handleNext = () => {
     if (step === 4) {
-      const dateObj = new Date(info.date + "T12:00:00");
-      const date = dateObj.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" });
+      const date = new Date().toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" });
       const review = { name: info.name, opposition: info.opposition, team: info.team, date, ratings, went_well: wentWell, development, action };
       saveReview(review);
       setReviews(loadReviews());
@@ -312,7 +311,7 @@ export default function App() {
 
   const startNew = () => {
     setStep(0);
-    setInfo({ name: savedName, opposition: "", team: "", date: "" });
+    setInfo({ name: savedName, opposition: "", team: "" });
     setRatings({}); setWentWell([]); setDevelopment([]);
     setAction({ keep_doing: "", will_change: "", how_when: "" });
     setScreen("review");
@@ -395,12 +394,6 @@ export default function App() {
                     onFocus={e=>e.target.style.borderColor="#2ECC71"} onBlur={e=>e.target.style.borderColor="#1E2D3D"} />
                 </div>
               ))}
-              <div style={{ marginBottom:20 }}>
-                <div style={{ color:"#7F8C8D", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
-                <input type="date" value={info.date} onChange={e=>setInfo(p=>({...p,date:e.target.value}))}
-                  style={{ width:"100%", background:"#1E2D3D", border:"1.5px solid #2C3E50", borderRadius:10, color: info.date ? "#ECF0F1" : "#2C3E50", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none", colorScheme:"dark" }}
-                  onFocus={e=>e.target.style.borderColor="#2ECC71"} onBlur={e=>e.target.style.borderColor="#1E2D3D"} />
-              </div>
               <div style={{ background:"#0D1B2A", borderRadius:10, padding:"10px 14px", border:"1px solid #1E2D3D" }}>
                 <div style={{ color:"#3D5166", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.5 }}>🔒 Answers stay private. Only your sport psychologist can see who completes their reflection.</div>
               </div>
