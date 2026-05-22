@@ -390,9 +390,9 @@ export default function App() {
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
       <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
-      <div style={{ flex:1, padding:"0 22px 110px", paddingBottom: step === 5 ? 28 : 110, maxWidth:500, margin:"0 auto", width:"100%" }}>
+      <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column" }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
-        <div className="slide" key={`${step}-view`}>
+        <div className="slide" key={`${step}-view`} style={step === 5 ? {flex:1, display:"flex", flexDirection:"column"} : undefined}>
 
           {step === 0 && (
             <div>
@@ -465,21 +465,21 @@ export default function App() {
           )}
 
           {step === 5 && (
-            <div style={{ display:"flex", flexDirection:"column", justifyContent:"center", minHeight:"calc(100vh - 160px)" }}>
+            <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
               <div style={{ textAlign:"center", marginBottom:28 }}>
-                <div style={{ fontSize:84, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
+                <div style={{ fontSize:52, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
                 <div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:34, letterSpacing:3, lineHeight:1.15 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
                 <div style={{ color:"#666666", fontSize:12, marginTop:10, fontFamily:"'Courier New', monospace", letterSpacing:1.5 }}>vs {info.opposition} · saved to your reviews</div>
               </div>
-              <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
                 {RATINGS.map(r => {
                   const v = ratings[r.key] || 0;
                   const col = v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C";
                   const label = r.key === "Tactical Setup" ? "TACTICAL" : r.key.toUpperCase();
                   return (
-                    <div key={r.key} style={{flex:1, background:"#0A1520", borderRadius:14, padding:"20px 4px 16px", textAlign:"center", border:"1.5px solid #F0A500"}}>
-                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:44, lineHeight:1}}>{v}</div>
-                      <div style={{color:"#AAAAAA", fontSize:10, marginTop:10, fontFamily:"'Courier New',monospace", letterSpacing:0.8, wordBreak:"break-word", lineHeight:1.4}}>{label}</div>
+                    <div key={r.key} style={{background:"#0A1520", borderRadius:14, padding:"20px 12px 16px", textAlign:"center", border:"1.5px solid #F0A500"}}>
+                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:48, lineHeight:1}}>{v}</div>
+                      <div style={{color:"#AAAAAA", fontSize:10, marginTop:10, fontFamily:"'Courier New',monospace", letterSpacing:1, whiteSpace:"nowrap"}}>{label}</div>
                     </div>
                   );
                 })}
