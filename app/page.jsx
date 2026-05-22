@@ -270,7 +270,7 @@ function HistoryView({ reviews, onBack, onDelete }) {
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [step, setStep] = useState(0);
-  const [info, setInfo] = useState({ name: "", opposition: "", team: "" });
+  const [info, setInfo] = useState({ name: "", opposition: "" });
   const [ratings, setRatings] = useState({});
   const [wentWell, setWentWell] = useState([]);
   const [development, setDevelopment] = useState([]);
@@ -284,7 +284,7 @@ export default function App() {
   const goStep = (n) => { setAnimDir(n > step ? 1 : -1); setStep(n); };
 
   const canProceed = () => {
-    if (step === 0) return info.name.trim() && info.opposition.trim() && info.team.trim();
+    if (step === 0) return info.name.trim() && info.opposition.trim();
     if (step === 1) return RATINGS.every(r => (ratings[r.key] || 0) > 0);
     if (step === 2) return wentWell.length > 0;
     if (step === 3) return development.length > 0;
@@ -295,7 +295,7 @@ export default function App() {
   const handleNext = () => {
     if (step === 4) {
       const date = new Date().toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" });
-      const review = { name: info.name, opposition: info.opposition, team: info.team, date, ratings, went_well: wentWell, development, action };
+      const review = { name: info.name, opposition: info.opposition, date, ratings, went_well: wentWell, development, action };
       saveReview(review);
       setReviews(loadReviews());
       setSavedName(info.name);
@@ -311,7 +311,7 @@ export default function App() {
 
   const startNew = () => {
     setStep(0);
-    setInfo({ name: savedName, opposition: "", team: "" });
+    setInfo({ name: savedName, opposition: "" });
     setRatings({}); setWentWell([]); setDevelopment([]);
     setAction({ keep_doing: "", will_change: "", how_when: "" });
     setScreen("review");
@@ -360,7 +360,7 @@ export default function App() {
               <div key={i} style={{ background:"#242424", borderRadius:10, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
                   <div style={{ color:"#F0F0F0", fontSize:13, fontFamily:"Georgia, serif" }}>vs {rev.opposition}</div>
-                  <div style={{ color:"#666666", fontSize:11, fontFamily:"'Courier New', monospace", marginTop:2 }}>{rev.team} · {rev.date}</div>
+                  <div style={{ color:"#666666", fontSize:11, fontFamily:"'Courier New', monospace", marginTop:2 }}>{rev.date}</div>
                 </div>
                 <div style={{ display:"flex", gap:6 }}>
                   {RATINGS.slice(0,3).map(r => { const v=rev.ratings[r.key]||0; const col=v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C"; return <div key={r.key} style={{textAlign:"center"}}><div style={{color:col,fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:15}}>{v}</div><div style={{color:"#666666",fontSize:8,fontFamily:"'Courier New',monospace"}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
@@ -398,7 +398,7 @@ export default function App() {
             <div>
               <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:24, marginBottom:6 }}>Let's reflect.</div>
               <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:30, fontFamily:"Georgia, serif" }}>Honest answers. Better coaching.</div>
-              {[{key:"name",label:"YOUR NAME",placeholder:"Enter your name"},{key:"team",label:"YOUR TEAM",placeholder:"Which team did you manage today?"},{key:"opposition",label:"OPPOSITION",placeholder:"Opposition team name (e.g. Na Piarsaigh)"}].map(f => (
+              {[{key:"name",label:"YOUR NAME",placeholder:"Enter your name"},{key:"opposition",label:"OPPOSITION",placeholder:"Opposition team name (e.g. Na Piarsaigh)"}].map(f => (
                 <div key={f.key} style={{ marginBottom:20 }}>
                   <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>{f.label}</div>
                   <input value={info[f.key]} onChange={e=>setInfo(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder}
