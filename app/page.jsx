@@ -390,7 +390,7 @@ export default function App() {
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
       <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
-      <div style={{ flex:1, padding:"0 22px 110px", maxWidth:500, margin:"0 auto", width:"100%" }}>
+      <div style={{ flex:1, padding:"0 22px 110px", paddingBottom: step === 5 ? 28 : 110, maxWidth:500, margin:"0 auto", width:"100%" }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
         <div className="slide" key={`${step}-view`}>
 
@@ -465,18 +465,28 @@ export default function App() {
           )}
 
           {step === 5 && (
-            <div>
-              <div style={{ textAlign:"center", padding:"10px 0 28px" }}>
-                <div style={{ fontSize:44, marginBottom:10 }}>✓</div>
-                <div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:18, letterSpacing:2 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
-                <div style={{ color:"#9A9A9A", fontSize:13, marginTop:6, fontFamily:"Georgia, serif" }}>vs {info.opposition} · saved to your reviews</div>
+            <div style={{ paddingTop:16 }}>
+              <div style={{ textAlign:"center", marginBottom:28 }}>
+                <div style={{ fontSize:54, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
+                <div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:34, letterSpacing:3, lineHeight:1.15 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
+                <div style={{ color:"#666666", fontSize:12, marginTop:10, fontFamily:"'Courier New', monospace", letterSpacing:1.5 }}>vs {info.opposition} · saved to your reviews</div>
               </div>
-              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-                {RATINGS.slice(0,3).map(r => { const v=ratings[r.key]||0; const col=v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C"; return <div key={r.key} style={{flex:1,background:"#242424",borderRadius:10,padding:"14px 8px",textAlign:"center",border:`1px solid ${col}44`}}><div style={{color:col,fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:28}}>{v}</div><div style={{color:"#9A9A9A",fontSize:9,marginTop:4,fontFamily:"'Courier New',monospace",letterSpacing:1}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
+              <div style={{ display:"flex", gap:10, marginBottom:20 }}>
+                {RATINGS.slice(0,3).map(r => {
+                  const v = ratings[r.key] || 0;
+                  const col = v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C";
+                  const label = r.key === "Tactical Setup" ? "TACTICAL" : r.key.toUpperCase();
+                  return (
+                    <div key={r.key} style={{flex:1, background:"#111D2C", borderRadius:14, padding:"24px 8px 18px", textAlign:"center", border:`1.5px solid ${col}55`}}>
+                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:54, lineHeight:1}}>{v}</div>
+                      <div style={{color:"#555555", fontSize:8, marginTop:12, fontFamily:"'Courier New',monospace", letterSpacing:1.5}}>{label}</div>
+                    </div>
+                  );
+                })}
               </div>
-              <div style={{ display:"flex", gap:10, marginTop:16 }}>
-                <button onClick={() => setScreen("history")} style={{ flex:1, padding:14, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:10, color:"#CCCCCC", fontFamily:"'Courier New', monospace", fontSize:11, cursor:"pointer", letterSpacing:1 }}>MY REVIEWS</button>
-                <button onClick={() => setScreen("home")} style={{ flex:1, padding:14, background:"#F0A500", border:"none", borderRadius:10, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, cursor:"pointer", letterSpacing:1 }}>HOME</button>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => setScreen("history")} style={{ flex:1, padding:15, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:10, color:"#CCCCCC", fontFamily:"'Courier New', monospace", fontSize:11, cursor:"pointer", letterSpacing:1 }}>MY REVIEWS</button>
+                <button onClick={() => setScreen("home")} style={{ flex:1, padding:15, background:"#F0A500", border:"none", borderRadius:10, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, cursor:"pointer", letterSpacing:1 }}>HOME</button>
               </div>
             </div>
           )}
