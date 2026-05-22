@@ -465,21 +465,21 @@ export default function App() {
           )}
 
           {step === 5 && (
-            <div style={{ paddingTop:16 }}>
+            <div style={{ display:"flex", flexDirection:"column", justifyContent:"center", minHeight:"calc(100vh - 160px)" }}>
               <div style={{ textAlign:"center", marginBottom:28 }}>
-                <div style={{ fontSize:54, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
+                <div style={{ fontSize:84, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
                 <div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:34, letterSpacing:3, lineHeight:1.15 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
                 <div style={{ color:"#666666", fontSize:12, marginTop:10, fontFamily:"'Courier New', monospace", letterSpacing:1.5 }}>vs {info.opposition} · saved to your reviews</div>
               </div>
-              <div style={{ display:"flex", gap:10, marginBottom:20 }}>
-                {RATINGS.slice(0,3).map(r => {
+              <div style={{ display:"flex", gap:8, marginBottom:20 }}>
+                {RATINGS.map(r => {
                   const v = ratings[r.key] || 0;
                   const col = v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C";
                   const label = r.key === "Tactical Setup" ? "TACTICAL" : r.key.toUpperCase();
                   return (
-                    <div key={r.key} style={{flex:1, background:"#111D2C", borderRadius:14, padding:"24px 8px 18px", textAlign:"center", border:`1.5px solid ${col}55`}}>
-                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:54, lineHeight:1}}>{v}</div>
-                      <div style={{color:"#555555", fontSize:8, marginTop:12, fontFamily:"'Courier New',monospace", letterSpacing:1.5}}>{label}</div>
+                    <div key={r.key} style={{flex:1, background:"#0A1520", borderRadius:14, padding:"20px 4px 16px", textAlign:"center", border:"1.5px solid #F0A500"}}>
+                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:44, lineHeight:1}}>{v}</div>
+                      <div style={{color:"#AAAAAA", fontSize:10, marginTop:10, fontFamily:"'Courier New',monospace", letterSpacing:0.8, wordBreak:"break-word", lineHeight:1.4}}>{label}</div>
                     </div>
                   );
                 })}
