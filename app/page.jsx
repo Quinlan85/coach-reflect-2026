@@ -7,7 +7,6 @@ const SUPABASE_URL = "https://ccornucfqjfxhjurpbcu.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjb3JudWNmcWpmeGhqdXJwYmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTgwODQsImV4cCI6MjA5Mjg5NDA4NH0.EuVR4lUVniFAomiv2o9cAysMqmiCmQrMrWmxyaG96PA";
 const TEAM = "coach";
 const STORAGE_KEY = "cq_coach_reviews";
-const SP_PIN = "1810";
 
 const RATINGS = [
   { key: "Preparation", desc: "Game plan, training sessions, pre-performance routine" },
@@ -50,14 +49,6 @@ const logCompletion = async (name, opposition, date) => {
   } catch {}
 };
 
-const loadCompletions = async () => {
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/completions?team=eq.${TEAM}&order=timestamp.desc`, {
-      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` },
-    });
-    return await res.json();
-  } catch { return []; }
-};
 
 const getWeekKey = (timestamp) => {
   const d = new Date(timestamp);
@@ -135,11 +126,18 @@ function SPDashboard({ onBack }) {
   const [unlocked, setUnlocked] = useState(false);
   const [pinError, setPinError] = useState(false);
 
-  useEffect(() => { if (unlocked) loadCompletions().then(setCompletions); }, [unlocked]);
-
-  const tryPin = () => {
-    if (pin === SP_PIN) { setUnlocked(true); setPinError(false); }
-    else { setPinError(true); setPin(""); }
+  const tryPin = async () => {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sp-dashboard`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+      body: JSON.stringify({ pin, team: "coach", action: "completions" }),
+    });
+    if (res.status === 401) { setPinError(true); setPin(""); }
+    else if (res.ok) { const { completions } = await res.json(); setCompletions(completions); setUnlocked(true); setPinError(false); }
   };
 
   if (!unlocked) return (
