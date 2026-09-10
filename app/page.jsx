@@ -1,6 +1,7 @@
 // @ts-nocheck
 "use client";
 import { useState, useEffect } from "react";
+import { dateLabel, followUpOf, orderedForDisplay, previousCommitment } from "./history.mjs";
 
 const CQ_LOGO = "/logo.png";
 const SUPABASE_URL = "https://ccornucfqjfxhjurpbcu.supabase.co";
@@ -50,6 +51,14 @@ const logCompletion = async (name, opposition, date) => {
 };
 
 
+const todayISO = () => {
+  // Local date, not UTC. `toISOString()` shifts across midnight for anyone west
+  // of Greenwich and would pre-fill yesterday's date.
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 const getWeekKey = (timestamp) => {
   const d = new Date(timestamp);
   const day = d.getDay();
@@ -84,13 +93,13 @@ function RatingRow({ label, desc, value, onChange }) {
       <div style={{ marginBottom: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ color: "#CCCCCC", fontFamily: "'Courier New', monospace", fontSize: 11, letterSpacing: 2 }}>{label.toUpperCase()}</span>
-          {value > 0 && <span style={{ color: value >= 8 ? "#F0A500" : value >= 5 ? "#F4C542" : "#E74C3C", fontSize: 11, fontFamily: "'Courier New', monospace" }}>{value} — {RATING_LABELS[value]}</span>}
+          {value > 0 && <span style={{ color: "#CCCCCC", fontSize: 11, fontFamily: "'Courier New', monospace" }}>{value} — {RATING_LABELS[value]}</span>}
         </div>
         <div style={{ color: "#666666", fontSize: 11, fontFamily: "Georgia, serif", marginTop: 3, fontStyle: "italic" }}>{desc}</div>
       </div>
       <div style={{ display: "flex", gap: 5 }}>
         {[1,2,3,4,5,6,7,8,9,10].map(n => (
-          <button key={n} onClick={() => onChange(n)} style={{ flex: 1, height: 38, borderRadius: 6, border: "none", background: value === n ? (n >= 8 ? "#F0A500" : n >= 5 ? "#F4C542" : "#E74C3C") : value > 0 && n <= value ? (n >= 8 ? "#F0A50022" : n >= 5 ? "#F4C54222" : "#E74C3C22") : "#2E2E2E", color: value === n ? "#111111" : "#9A9A9A", fontWeight: "bold", fontSize: 12, cursor: "pointer", transition: "all 0.15s ease", fontFamily: "'Courier New', monospace", transform: value === n ? "scale(1.1)" : "scale(1)" }}>{n}</button>
+          <button key={n} onClick={() => onChange(n)} style={{ flex: 1, height: 38, borderRadius: 6, border: "none", background: value === n ? "#F0A500" : value > 0 && n <= value ? "#F0A50022" : "#2E2E2E", color: value === n ? "#111111" : "#9A9A9A", fontWeight: "bold", fontSize: 12, cursor: "pointer", transition: "all 0.15s ease", fontFamily: "'Courier New', monospace", transform: value === n ? "scale(1.1)" : "scale(1)" }}>{n}</button>
         ))}
       </div>
     </div>
@@ -209,16 +218,30 @@ function SPDashboard({ onBack }) {
               <div key={p} style={{ marginBottom: i < allCoaches.length-1 ? 12 : 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                   <span style={{ color: "#F0F0F0", fontFamily: "Georgia, serif", fontSize: 13 }}>{p}</span>
-                  <span style={{ color: total >= 5 ? "#F0A500" : total >= 2 ? "#F4C542" : "#E74C3C", fontFamily: "'Courier New', monospace", fontSize: 12, fontWeight: "bold" }}>{total}</span>
+                  <span style={{ color: "#CCCCCC", fontFamily: "'Courier New', monospace", fontSize: 12, fontWeight: "bold" }}>{total}</span>
                 </div>
                 <div style={{ height: 4, background: "#2E2E2E", borderRadius: 2, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: total >= 5 ? "#F0A500" : total >= 2 ? "#F4C542" : "#E74C3C", borderRadius: 2, transition: "width 0.5s ease" }} />
+                  <div style={{ height: "100%", width: `${pct}%`, background: "#3D3D3D", borderRadius: 2, transition: "width 0.5s ease" }} />
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// A stored reflection's date, described for what it is. New records carry the
+// match date the coach typed. Legacy records carry only the moment the form was
+// submitted, which is NOT a match date, so they say "logged" instead. Nothing
+// is inferred and nothing is rewritten.
+function WhenLabel({ review, size = 12 }) {
+  const d = dateLabel(review);
+  if (!d.text) return null;
+  return (
+    <div style={{ color: "#666666", fontSize: size, fontFamily: "'Courier New', monospace", marginTop: 3 }}>
+      {d.stated ? d.text : `logged ${d.text}`}
     </div>
   );
 }
@@ -238,25 +261,35 @@ function HistoryView({ reviews, onBack, onDelete }) {
         <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 14, letterSpacing: 1 }}>MY REVIEWS</div>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 11, cursor: "pointer" }}>← BACK</button>
       </div>
-      {reviews.map((rev, idx) => (
+      {orderedForDisplay(reviews).map((rev, idx) => (
         <div key={idx} style={{ background: "#242424", borderRadius: 12, marginBottom: 10, border: "1px solid #2E2E2E", overflow: "hidden" }}>
           <div onClick={() => setExpanded(expanded===idx?null:idx)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 13 }}>vs {rev.opposition}</div>
-              <div style={{ color: "#666666", fontSize: 12, fontFamily: "'Courier New', monospace", marginTop: 3 }}>{rev.date}</div>
+              <WhenLabel review={rev} />
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              {RATINGS.slice(0,3).map(r => { const v=rev.ratings[r.key]||0; const col=v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C"; return <div key={r.key} style={{color:col,fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:14}}>{v}</div>; })}
+              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:14}}>{v||"—"}</div>; })}
               <span style={{ color:"#666666", marginLeft:4 }}>{expanded===idx?"▴":"▾"}</span>
             </div>
           </div>
           {expanded === idx && (
             <div style={{ padding: "0 16px 16px", borderTop: "1px solid #2E2E2E", paddingTop: 14 }}>
-              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; const col=v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C"; return <div key={r.key} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"#9A9A9A",fontSize:12,fontFamily:"'Courier New',monospace"}}>{r.key}</span><span style={{color:col,fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:12}}>{v}</span></div>; })}
+              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"#9A9A9A",fontSize:12,fontFamily:"'Courier New',monospace"}}>{r.key}</span><span style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:12}}>{v ? `${v} \u00b7 ${RATING_LABELS[v]}` : "—"}</span></div>; })}
               {rev.went_well?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #F0A500", paddingLeft:12 }}><div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>✓ WENT WELL</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"Georgia, serif" }}>{rev.went_well.join(" · ")}</div></div>}
               {rev.development?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #3498DB", paddingLeft:12 }}><div style={{ color:"#3498DB", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>△ DEVELOPMENT</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"Georgia, serif" }}>{rev.development.join(" · ")}</div></div>}
               {rev.action?.will_change && <div style={{ marginTop:12, borderLeft:"2px solid #E74C3C", paddingLeft:12 }}><div style={{ color:"#E74C3C", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>→ WILL CHANGE</div><div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"Georgia, serif" }}>{rev.action.will_change}</div></div>}
-              <button onClick={() => onDelete(idx)} style={{ marginTop:12, padding:"8px 14px", background:"transparent", border:"1px solid #3D3D3D", borderRadius:8, color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:10, cursor:"pointer", letterSpacing:1 }}>DELETE</button>
+              {/* Both halves together: the commitment as it was written, and
+                  what the coach said happened. No verdict is drawn from the
+                  pair — that judgement belongs in a conversation, not here. */}
+              {followUpOf(rev) && (
+                <div style={{ marginTop:12, borderLeft:"2px solid #3D3D3D", paddingLeft:12 }}>
+                  <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>↺ FOLLOWED UP ON</div>
+                  <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"Georgia, serif", fontStyle:"italic" }}>&ldquo;{followUpOf(rev).antecedent}&rdquo;</div>
+                  <div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"Georgia, serif", marginTop:4 }}>{followUpOf(rev).response}</div>
+                </div>
+              )}
+              <button onClick={() => { setExpanded(null); onDelete(rev); }} style={{ marginTop:12, padding:"8px 14px", background:"transparent", border:"1px solid #3D3D3D", borderRadius:8, color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:10, cursor:"pointer", letterSpacing:1 }}>DELETE</button>
             </div>
           )}
         </div>
@@ -268,7 +301,7 @@ function HistoryView({ reviews, onBack, onDelete }) {
 export default function App() {
   const [screen, setScreen] = useState("home");
   const [step, setStep] = useState(0);
-  const [info, setInfo] = useState({ name: "", opposition: "" });
+  const [info, setInfo] = useState({ name: "", opposition: "", match_date: "" });
   const [ratings, setRatings] = useState({});
   const [wentWell, setWentWell] = useState([]);
   const [development, setDevelopment] = useState([]);
@@ -276,13 +309,18 @@ export default function App() {
   const [animDir, setAnimDir] = useState(1);
   const [reviews, setReviews] = useState([]);
   const [savedName, setSavedName] = useState("");
+  const [followUp, setFollowUp] = useState("");
 
   useEffect(() => { const s = loadReviews(); setReviews(s); if (s.length > 0) setSavedName(s[0].name || ""); }, []);
+
+  // The commitment from the last reflection that carried one. Read from stored
+  // history, replayed verbatim, and never scored.
+  const prevCommitment = previousCommitment(reviews);
 
   const goStep = (n) => { setAnimDir(n > step ? 1 : -1); setStep(n); };
 
   const canProceed = () => {
-    if (step === 0) return info.name.trim() && info.opposition.trim();
+    if (step === 0) return info.name.trim() && info.opposition.trim() && info.match_date.trim();
     if (step === 1) return RATINGS.every(r => (ratings[r.key] || 0) > 0);
     if (step === 2) return wentWell.length > 0;
     if (step === 3) return development.length > 0;
@@ -292,8 +330,23 @@ export default function App() {
 
   const handleNext = () => {
     if (step === 4) {
+      // Two different facts, kept apart. `match_date` is when the game was
+      // played, and the coach said so. `submitted_at` / `date` are when the
+      // form was filled. Older records have only the latter and are never
+      // relabelled as the former.
       const date = new Date().toLocaleDateString("en-IE", { day: "numeric", month: "short", year: "numeric" });
-      const review = { name: info.name, opposition: info.opposition, date, ratings, went_well: wentWell, development, action };
+      const review = {
+        name: info.name, opposition: info.opposition,
+        match_date: info.match_date, submitted_at: Date.now(), date,
+        ratings, went_well: wentWell, development, action,
+      };
+      // The antecedent is stored as TEXT alongside the answer, so the pairing
+      // survives a deleted or reordered history. Recorded only when the coach
+      // actually wrote something: an unanswered follow-up is stored as nothing
+      // at all, never as a missed commitment.
+      if (prevCommitment && followUp.trim()) {
+        review.follow_up = { previous_will_change: prevCommitment.text, response: followUp.trim() };
+      }
       saveReview(review);
       setReviews(loadReviews());
       setSavedName(info.name);
@@ -309,9 +362,14 @@ export default function App() {
 
   const startNew = () => {
     setStep(0);
-    setInfo({ name: savedName, opposition: "" });
+    // Pre-filled with today because most reflections are done on match day, but
+    // it is an ordinary editable field: a coach reflecting on Tuesday about
+    // Sunday's game sets Sunday. Computed here, in a click handler, so the
+    // server-rendered markup carries no date and nothing mismatches on hydrate.
+    setInfo({ name: savedName, opposition: "", match_date: todayISO() });
     setRatings({}); setWentWell([]); setDevelopment([]);
     setAction({ keep_doing: "", will_change: "", how_when: "" });
+    setFollowUp("");
     setScreen("review");
   };
 
@@ -354,14 +412,14 @@ export default function App() {
         {reviews.length > 0 && (
           <div style={{ marginTop:24 }}>
             <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:12, letterSpacing:2, marginBottom:14 }}>LAST 3 GAMES</div>
-            {reviews.slice(0,3).map((rev,i) => (
+            {orderedForDisplay(reviews).slice(0,3).map((rev,i) => (
               <div key={i} style={{ background:"#242424", borderRadius:10, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
                   <div style={{ color:"#F0F0F0", fontSize:13, fontFamily:"Georgia, serif" }}>vs {rev.opposition}</div>
-                  <div style={{ color:"#666666", fontSize:11, fontFamily:"'Courier New', monospace", marginTop:2 }}>{rev.date}</div>
+                  <WhenLabel review={rev} size={11} />
                 </div>
                 <div style={{ display:"flex", gap:6 }}>
-                  {RATINGS.slice(0,3).map(r => { const v=rev.ratings[r.key]||0; const col=v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C"; return <div key={r.key} style={{textAlign:"center"}}><div style={{color:col,fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:15}}>{v}</div><div style={{color:"#666666",fontSize:8,fontFamily:"'Courier New',monospace"}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
+                  {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{textAlign:"center"}}><div style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:15}}>{v||"—"}</div><div style={{color:"#666666",fontSize:8,fontFamily:"'Courier New',monospace"}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
                 </div>
               </div>
             ))}
@@ -379,7 +437,7 @@ export default function App() {
       <style>{`* { box-sizing: border-box; }`}</style>
       <Header />
       <div style={{ padding:"20px 22px 40px", maxWidth:500, margin:"0 auto" }}>
-        <HistoryView reviews={reviews} onBack={() => setScreen("home")} onDelete={(idx) => { const u = reviews.filter((_,i)=>i!==idx); localStorage.setItem(STORAGE_KEY,JSON.stringify(u)); setReviews(u); }} />
+        <HistoryView reviews={reviews} onBack={() => setScreen("home")} onDelete={(target) => { const u = reviews.filter((r) => r !== target); localStorage.setItem(STORAGE_KEY,JSON.stringify(u)); setReviews(u); }} />
       </div>
     </div>
   );
@@ -404,8 +462,19 @@ export default function App() {
                     onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
                 </div>
               ))}
-              <div style={{ background:"#242424", borderRadius:10, padding:"10px 14px", border:"1px solid #2E2E2E" }}>
-                <div style={{ color:"#666666", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.5 }}>🔒 Answers stay private. Only your sport psychologist can see who completes their reflection.</div>
+              <div style={{ marginBottom:20 }}>
+                <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
+                <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))}
+                  style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none" }}
+                  onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
+                <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:6, fontStyle:"italic" }}>The day the game was played — change it if you are reflecting later.</div>
+              </div>
+              {/* Says what actually happens to the data, including the part that
+                  is inconvenient. Do not soften this and do not add a claim that
+                  installing the app keeps anything safe — it does not. */}
+              <div style={{ background:"#242424", borderRadius:10, padding:"12px 14px", border:"1px solid #2E2E2E" }}>
+                <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.55 }}>🔒 Your answers are saved on this phone only. CQ Perform keeps no copy — if you clear your browser or change device, they are gone.</div>
+                <div style={{ color:"#666666", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.55, marginTop:8 }}>Your name, the opposition and the date are sent to Conor, so he can see that you completed a reflection — not what you wrote.</div>
               </div>
             </div>
           )}
@@ -442,6 +511,28 @@ export default function App() {
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#E74C3C"}}>▶</span><span style={{color:"#E74C3C",fontFamily:"'Courier New', monospace",fontWeight:"bold",fontSize:11,letterSpacing:2}}>ACTION PLAN</span></div>
               <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:24 }}>What will you do about it?</div>
+              {prevCommitment && (
+                <div style={{ background:"#242424", borderRadius:12, padding:"16px", border:"1px solid #2E2E2E", marginBottom:16 }}>
+                  <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:10, letterSpacing:2, marginBottom:10 }}>LAST TIME YOU SAID</div>
+                  {/* The coach's own sentence, verbatim. Nothing is summarised,
+                      nothing is scored, and there is no right answer below. */}
+                  <div style={{ color:"#F0F0F0", fontSize:15, fontFamily:"Georgia, serif", lineHeight:1.5, fontStyle:"italic", borderLeft:"2px solid #3D3D3D", paddingLeft:12 }}>
+                    &ldquo;{prevCommitment.text}&rdquo;
+                  </div>
+                  {prevCommitment.date.text && (
+                    <div style={{ color:"#666666", fontSize:11, fontFamily:"'Courier New', monospace", marginTop:8, paddingLeft:14 }}>
+                      {prevCommitment.date.stated ? prevCommitment.date.text : `logged ${prevCommitment.date.text}`}
+                    </div>
+                  )}
+                  <div style={{ marginTop:16 }}>
+                    <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, letterSpacing:1 }}>WHAT HAPPENED WITH THAT?</div>
+                    <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:2, fontStyle:"italic" }}>Optional. Whatever happened is useful — including nothing.</div>
+                    <textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="e.g. Held it for most of the game, lost it late on..."
+                      style={{ width:"100%", marginTop:6, background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"12px 14px", fontSize:13, fontFamily:"Georgia, serif", outline:"none", resize:"none", lineHeight:1.6 }}
+                      onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
+                  </div>
+                </div>
+              )}
               <div style={{ background:"#242424", borderRadius:12, padding:"16px", border:"1px solid #2E2E2E" }}>
                 {[
                   {key:"keep_doing", label:"✓ KEEP DOING", sub:"What must you maintain?", ph:"e.g. Clear pre-match message, positive body language..."},
@@ -472,7 +563,7 @@ export default function App() {
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
                 {RATINGS.map(r => {
                   const v = ratings[r.key] || 0;
-                  const col = v>=8?"#F0A500":v>=5?"#F4C542":"#E74C3C";
+                  const col = "#CCCCCC";
                   const label = r.key === "Tactical Setup" ? "TACTICAL" : r.key.toUpperCase();
                   return (
                     <div key={r.key} style={{background:"transparent", borderRadius:14, padding:"20px 12px 16px", textAlign:"center", border:"1.5px solid #F0A500"}}>
