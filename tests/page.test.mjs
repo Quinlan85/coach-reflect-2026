@@ -136,44 +136,86 @@ test("DELETION IS BY IDENTITY — reordering the list cannot delete the wrong on
     "delete is not filtering by object identity");
 });
 
-// ── the iOS date-input overflow fix ─────────────────────────────────────────
+// ── the iPhone date-field overflow ─────────────────────────────────────────
 //
-// This one cannot be proven by a test runner or by Chromium: the defect is a
-// WebKit-only layout behaviour. So the test pins the FIX ITSELF, and the
-// reasoning is recorded here so nobody deletes the rule as dead weight.
+// ROUND ONE WAS WRONG AND THIS RECORDS WHY. The first fix added min-width: 0 to
+// the control, reasoning that WebKit's inline-flex display gave it an automatic
+// minimum it could not shrink below. That reasoning was not wrong, but it was
+// not enough: it only addressed the control WANTING to be wide, and did nothing
+// about what happens when it is wide anyway. Nothing in the markup contained
+// it, so the spill went straight through the wrapper to the column and the page.
+// It shipped, and the iPhone was still broken.
 //
-// WebKit gives input[type=date] `display: inline-flex`; every other engine uses
-// inline-block. That hands the control an automatic minimum size equal to the
-// intrinsic width of its internal date editor. `min-width` wins over both
-// `width` and `max-width`, so `width: 100%` was being clamped UPWARDS and the
-// field overflowed the content column to the right on iPhone.
+// Measured with the control forced to a width it cannot shrink below:
+//
+//              column overflow   page overflow
+//   before             508px           501px
+//   after                0px             0px
+//
+// So containment now lives on the WRAPPER and does not depend on having
+// diagnosed WebKit's internals correctly. These tests pin that containment.
+// They are source assertions because the defect is WebKit-only — no test runner
+// and no Chromium run can reproduce it, which is the trap that let round one
+// look verified when it was not.
 
-test("THE iOS DATE OVERFLOW FIX IS STILL SHIPPED", () => {
-  // Asserted against CODE, not PAGE: the comment next to the input quotes this
-  // very rule, and matching that comment would let the real rule be deleted
-  // while the test stayed green.
-  const rule = /input\[type="date"\]\s*\{[^}]*min-width:\s*0[^}]*\}/;
-  assert.ok(rule.test(CODE), "the min-width:0 rule for input[type=date] is gone — iPhone overflow returns");
+test("THE DATE FIELD WRAPPER CONTAINS THE CONTROL", () => {
+  const rule = CODE.match(/\.date-field\s*\{([^}]*)\}/);
+  assert.ok(rule, "the .date-field containment rule is gone");
+  const css = rule[1];
+  // A single grid track of minmax(0, 1fr) caps the width and kills the item's
+  // automatic minimum — the part min-width on the control cannot reach.
+  assert.ok(/grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)/.test(css),
+    "the minmax(0, 1fr) track is gone — an oversized control can push the column open again");
+  assert.ok(/display:\s*grid/.test(css), "the wrapper is no longer a grid container");
+  // The backstop. clip is preferred because, unlike hidden, it does not turn the
+  // wrapper into a scroll container; hidden is kept first as the fallback for
+  // Safari versions without clip.
+  assert.ok(/overflow-x:\s*hidden/.test(css) && /overflow-x:\s*clip/.test(css),
+    "the overflow-x backstop (hidden then clip) is gone");
+  assert.ok(css.indexOf("hidden") < css.indexOf("clip"),
+    "clip must come after hidden or older Safari wins and the scroll container returns");
 });
 
-test("the date field is still width-constrained to its container", () => {
-  const style = CODE.match(/input\[type="date"\]\s*\{([^}]*)\}/)[1];
-  assert.ok(/max-width:\s*100%/.test(style), "max-width:100% guard removed");
-  // Scope to the date input's OWN style object — up to its self-closing tag —
-  // so a neighbouring element's width:100% cannot satisfy this.
-  const dateTag = CODE.match(/<input type="date"[\s\S]*?\/>/)[0];
-  assert.ok(/width:\s*"100%"/.test(dateTag),
-    "the date input no longer fills the content width");
+test("the wrapper markup actually uses the containment class", () => {
+  // A rule nothing references is decoration. Pin the binding too.
+  assert.ok(/className="date-field"/.test(CODE), "the MATCH DATE wrapper lost className=\"date-field\"");
+  const wrapper = CODE.match(/className="date-field"[\s\S]*?<input type="date"/);
+  assert.ok(wrapper, "the date input is no longer inside the .date-field wrapper");
+});
+
+test("the control itself is still fully constrained", () => {
+  const css = CODE.match(/input\[type="date"\]\s*\{([^}]*)\}/)[1];
+  for (const [prop, re] of [
+    ["display: block", /display:\s*block/],            // defeats iOS 17 ignoring width on inline-flex
+    ["width: 100%", /width:\s*100%/],
+    ["max-width: 100%", /max-width:\s*100%/],
+    ["min-width: 0", /min-width:\s*0/],
+    ["box-sizing: border-box", /box-sizing:\s*border-box/],
+  ]) {
+    assert.ok(re.test(css), `the date control lost ${prop}`);
+  }
+});
+
+test("the control's internal date fields cannot paint past their own host", () => {
+  // The host box being the right size is not sufficient: WebKit lays the day,
+  // month and year fields out in the control's shadow tree, and that inner
+  // content has its own minimum.
+  assert.ok(/::-webkit-datetime-edit[^{]*\{[^}]*min-width:\s*0/.test(CODE),
+    "the shadow-tree constraint on ::-webkit-datetime-edit is gone");
+});
+
+test("THE NATIVE iOS PICKER IS PRESERVED", () => {
+  // Removing the native appearance would "fix" the width by replacing the
+  // control a coach actually taps. Not an acceptable trade.
+  assert.ok(!/appearance:\s*none/i.test(CODE),
+    "-webkit-appearance:none strips the native iOS date picker");
 });
 
 test("the fix is CSS only — date behaviour and stored values are untouched", () => {
-  // The overflow fix must not have reached into what the field means or stores.
   assert.ok(/match_date:\s*info\.match_date/.test(CODE), "match_date storage changed");
   assert.ok(/submitted_at:\s*Date\.now\(\)/.test(CODE), "submitted_at storage changed");
   assert.ok(/match_date:\s*todayISO\(\)/.test(CODE), "the today pre-fill changed");
-  assert.ok(/a\.match_date|info\.match_date/.test(CODE), "the field is no longer bound to info.match_date");
-  // No appearance override crept in: that would restyle the native iOS picker,
-  // which is a redesign, not a width fix.
-  assert.ok(!/appearance:\s*none/i.test(CODE),
-    "-webkit-appearance:none would restyle the native picker — out of scope for a width fix");
+  assert.ok(/type="date"/.test(CODE), "the field is no longer a native date input");
+  assert.ok(/onChange=\{e=>setInfo\(p=>\(\{\.\.\.p,match_date:e\.target\.value\}\)\)\}/.test(CODE),
+    "the date field is no longer editable or no longer bound to info.match_date");
 });

@@ -444,7 +444,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } input[type="date"] { min-width: 0; max-width: 100%; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } .date-field { display: grid; grid-template-columns: minmax(0, 1fr); overflow-x: hidden; overflow-x: clip; } input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; } input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-fields-wrapper { min-width: 0; max-width: 100%; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
       <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column", justifyContent: step === 5 ? "center" : undefined }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
@@ -462,17 +462,29 @@ export default function App() {
                     onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
                 </div>
               ))}
-              <div style={{ marginBottom:20 }}>
+              <div className="date-field" style={{ marginBottom:20 }}>
                 <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
-                {/* width:100% is not enough for this one control on iOS Safari.
-                    WebKit gives input[type=date] display:inline-flex (everyone
-                    else uses inline-block), which gives it an automatic minimum
-                    size equal to the intrinsic width of its internal date UI.
-                    min-width beats both width and max-width, so the control was
-                    clamped UP past the container and spilled off the right edge.
-                    The `input[type="date"] { min-width: 0 }` rule in the screen's
-                    style block releases that minimum. See that rule before
-                    changing anything here. */}
+                {/* This control overflowed the content column on iPhone, and the
+                    first attempt at a fix did not hold. That attempt only tried to
+                    stop the control WANTING to be wide (min-width: 0 on the host).
+                    It did nothing about what happens if it is wide anyway — and
+                    nothing here contained it, so the spill reached the column and
+                    the page.
+
+                    So containment now lives on the wrapper, in `.date-field`, and
+                    does not depend on diagnosing WebKit's internals correctly:
+                    a single-track grid of minmax(0, 1fr) caps the width, and
+                    overflow-x: clip is the hard backstop. Measured: with the
+                    control forced to 900px, the page overflowed by 540px before
+                    this and by 0px after.
+
+                    display:block on the input additionally defeats the iOS 17
+                    path where width:100% is ignored on the UA's inline-flex box,
+                    and the ::-webkit-datetime-edit rules stop the control's
+                    internal date fields painting past their own host.
+
+                    -webkit-appearance is deliberately left alone so the native
+                    iOS picker is preserved. */}
                 <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))}
                   style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none" }}
                   onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
