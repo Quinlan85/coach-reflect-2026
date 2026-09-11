@@ -135,3 +135,45 @@ test("DELETION IS BY IDENTITY — reordering the list cannot delete the wrong on
   assert.ok(/reviews\.filter\(\(r\) => r !== target\)/.test(CODE),
     "delete is not filtering by object identity");
 });
+
+// ── the iOS date-input overflow fix ─────────────────────────────────────────
+//
+// This one cannot be proven by a test runner or by Chromium: the defect is a
+// WebKit-only layout behaviour. So the test pins the FIX ITSELF, and the
+// reasoning is recorded here so nobody deletes the rule as dead weight.
+//
+// WebKit gives input[type=date] `display: inline-flex`; every other engine uses
+// inline-block. That hands the control an automatic minimum size equal to the
+// intrinsic width of its internal date editor. `min-width` wins over both
+// `width` and `max-width`, so `width: 100%` was being clamped UPWARDS and the
+// field overflowed the content column to the right on iPhone.
+
+test("THE iOS DATE OVERFLOW FIX IS STILL SHIPPED", () => {
+  // Asserted against CODE, not PAGE: the comment next to the input quotes this
+  // very rule, and matching that comment would let the real rule be deleted
+  // while the test stayed green.
+  const rule = /input\[type="date"\]\s*\{[^}]*min-width:\s*0[^}]*\}/;
+  assert.ok(rule.test(CODE), "the min-width:0 rule for input[type=date] is gone — iPhone overflow returns");
+});
+
+test("the date field is still width-constrained to its container", () => {
+  const style = CODE.match(/input\[type="date"\]\s*\{([^}]*)\}/)[1];
+  assert.ok(/max-width:\s*100%/.test(style), "max-width:100% guard removed");
+  // Scope to the date input's OWN style object — up to its self-closing tag —
+  // so a neighbouring element's width:100% cannot satisfy this.
+  const dateTag = CODE.match(/<input type="date"[\s\S]*?\/>/)[0];
+  assert.ok(/width:\s*"100%"/.test(dateTag),
+    "the date input no longer fills the content width");
+});
+
+test("the fix is CSS only — date behaviour and stored values are untouched", () => {
+  // The overflow fix must not have reached into what the field means or stores.
+  assert.ok(/match_date:\s*info\.match_date/.test(CODE), "match_date storage changed");
+  assert.ok(/submitted_at:\s*Date\.now\(\)/.test(CODE), "submitted_at storage changed");
+  assert.ok(/match_date:\s*todayISO\(\)/.test(CODE), "the today pre-fill changed");
+  assert.ok(/a\.match_date|info\.match_date/.test(CODE), "the field is no longer bound to info.match_date");
+  // No appearance override crept in: that would restyle the native iOS picker,
+  // which is a redesign, not a width fix.
+  assert.ok(!/appearance:\s*none/i.test(CODE),
+    "-webkit-appearance:none would restyle the native picker — out of scope for a width fix");
+});

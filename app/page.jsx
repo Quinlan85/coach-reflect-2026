@@ -444,7 +444,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } input[type="date"] { min-width: 0; max-width: 100%; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
       <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column", justifyContent: step === 5 ? "center" : undefined }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
@@ -464,6 +464,15 @@ export default function App() {
               ))}
               <div style={{ marginBottom:20 }}>
                 <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
+                {/* width:100% is not enough for this one control on iOS Safari.
+                    WebKit gives input[type=date] display:inline-flex (everyone
+                    else uses inline-block), which gives it an automatic minimum
+                    size equal to the intrinsic width of its internal date UI.
+                    min-width beats both width and max-width, so the control was
+                    clamped UP past the container and spilled off the right edge.
+                    The `input[type="date"] { min-width: 0 }` rule in the screen's
+                    style block releases that minimum. See that rule before
+                    changing anything here. */}
                 <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))}
                   style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none" }}
                   onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
