@@ -12,10 +12,16 @@ Live at **coach.cqperform.ie** — a post-match self-reflection tool for coaches
 
 ## Design
 
-- Background: `#0A1520`
-- Accent (green): `#2ECC71`
-- Card surface: `#111D2C`
+- Background: `#1A1A1A`
+- Accent (amber): `#F0A500`
+- Card surface: `#242424`
+- Borders / inactive: `#2E2E2E`, `#3D3D3D`
+- Text: `#F0F0F0` primary, `#CCCCCC` values, `#9A9A9A` labels, `#666666` muted
+- Section accents: `#3498DB` (Development), `#E74C3C` (Action Plan, PIN error)
 - Fonts: `'Courier New'` monospace for labels/UI, `Georgia` serif for body copy
+
+The green palette (`#0A1520` / `#2ECC71` / `#111D2C`) was replaced by the
+charcoal/amber one above in commit `060f712`. It is not used anywhere.
 - Mobile-first, single-page, inline styles throughout
 
 ## App Structure
