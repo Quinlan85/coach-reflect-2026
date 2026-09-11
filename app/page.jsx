@@ -444,7 +444,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } .date-field { display: grid; grid-template-columns: minmax(0, 1fr); overflow-x: hidden; overflow-x: clip; } input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; } input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-fields-wrapper { min-width: 0; max-width: 100%; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } .date-field { display: grid; grid-template-columns: minmax(0, 1fr); } .date-shell { display: grid; grid-template-columns: minmax(0, 1fr); background: #2E2E2E; border: 1.5px solid #3D3D3D; border-radius: 10px; overflow: hidden; } .date-shell:focus-within { border-color: #F0A500; } input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; background: transparent; border: 0; border-radius: 0; outline: none; color: #F0F0F0; padding: 14px 16px; font-size: 16px; font-family: Georgia, serif; } input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-fields-wrapper { min-width: 0; max-width: 100%; } input[type="date"]::-webkit-date-and-time-value { text-align: left; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
       <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column", justifyContent: step === 5 ? "center" : undefined }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
@@ -464,30 +464,31 @@ export default function App() {
               ))}
               <div className="date-field" style={{ marginBottom:20 }}>
                 <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
-                {/* This control overflowed the content column on iPhone, and the
-                    first attempt at a fix did not hold. That attempt only tried to
-                    stop the control WANTING to be wide (min-width: 0 on the host).
-                    It did nothing about what happens if it is wide anyway — and
-                    nothing here contained it, so the spill reached the column and
-                    the page.
+                {/* THE NATIVE CONTROL DOES NOT PAINT ITS OWN EDGE, AND THAT IS
+                    THE POINT. Two rounds were spent trying to make this control
+                    the right width on iOS. Round one failed. Round two contained
+                    it — the page stopped breaking — but an iPhone screenshot
+                    showed the control was still oversized and the containment
+                    was simply clipping it, leaving a squared-off right edge
+                    where the other two fields have rounded corners.
 
-                    So containment now lives on the wrapper, in `.date-field`, and
-                    does not depend on diagnosing WebKit's internals correctly:
-                    a single-track grid of minmax(0, 1fr) caps the width, and
-                    overflow-x: clip is the hard backstop. Measured: with the
-                    control forced to 900px, the page overflowed by 540px before
-                    this and by 0px after.
+                    So the visible box is no longer the control's. `.date-shell`
+                    is an ordinary div and carries the background, the border and
+                    the corner radius; it always fits, because a plain block
+                    element always does. The control inside is transparent and
+                    borderless, so whatever width iOS decides it wants, there is
+                    no visible edge left to clip. overflow:hidden on the shell
+                    follows the border-radius curve, so the corner stays round.
 
-                    display:block on the input additionally defeats the iOS 17
-                    path where width:100% is ignored on the UA's inline-flex box,
-                    and the ::-webkit-datetime-edit rules stop the control's
-                    internal date fields painting past their own host.
+                    Focus moves with it: :focus-within on the shell replaces the
+                    old inline onFocus/onBlur, which coloured a border that no
+                    longer exists.
 
-                    -webkit-appearance is deliberately left alone so the native
-                    iOS picker is preserved. */}
-                <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))}
-                  style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none" }}
-                  onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
+                    -webkit-appearance is still untouched. The native iOS picker
+                    is preserved. */}
+                <div className="date-shell">
+                  <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))} />
+                </div>
                 <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:6, fontStyle:"italic" }}>The day the game was played — change it if you are reflecting later.</div>
               </div>
               {/* Says what actually happens to the data, including the part that

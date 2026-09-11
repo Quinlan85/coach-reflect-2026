@@ -136,57 +136,77 @@ test("DELETION IS BY IDENTITY — reordering the list cannot delete the wrong on
     "delete is not filtering by object identity");
 });
 
-// ── the iPhone date-field overflow ─────────────────────────────────────────
+// ── the iPhone date field ──────────────────────────────────────────────────
 //
-// ROUND ONE WAS WRONG AND THIS RECORDS WHY. The first fix added min-width: 0 to
-// the control, reasoning that WebKit's inline-flex display gave it an automatic
-// minimum it could not shrink below. That reasoning was not wrong, but it was
-// not enough: it only addressed the control WANTING to be wide, and did nothing
-// about what happens when it is wide anyway. Nothing in the markup contained
-// it, so the spill went straight through the wrapper to the column and the page.
-// It shipped, and the iPhone was still broken.
+// THREE ROUNDS, AND THE HISTORY MATTERS MORE THAN THE RULES.
 //
-// Measured with the control forced to a width it cannot shrink below:
+//   1. min-width: 0 on the control. Shipped. Still broken on iPhone: it only
+//      addressed the control WANTING to be wide, not what happens if it is.
+//   2. Containment on the wrapper. The page stopped breaking — measured, column
+//      and page overflow went from 508px/501px to 0 — but an iPhone screenshot
+//      showed the control was still oversized and the clip was simply cutting
+//      it, leaving a squared-off right edge next to two properly rounded ones.
+//   3. This one. Stop trying to make the native control the right size, and
+//      stop letting it paint the visible edge at all.
 //
-//              column overflow   page overflow
-//   before             508px           501px
-//   after                0px             0px
+// `.date-shell` is an ordinary div carrying the background, border and corner
+// radius. Ordinary divs always fit. The control inside is transparent and
+// borderless, so however wide iOS decides it should be, there is no visible
+// edge left to clip. Verified in a browser: with the control forced to 900px,
+// the field still matches the text inputs on left edge, right edge, radius,
+// border and background, with no column or page overflow.
 //
-// So containment now lives on the WRAPPER and does not depend on having
-// diagnosed WebKit's internals correctly. These tests pin that containment.
-// They are source assertions because the defect is WebKit-only — no test runner
-// and no Chromium run can reproduce it, which is the trap that let round one
-// look verified when it was not.
+// These are source assertions because the defect is WebKit-only and cannot be
+// reproduced by a test runner. That is exactly the trap that let round one look
+// verified when it was not, so the tests pin the MECHANISM, not a measurement.
 
-test("THE DATE FIELD WRAPPER CONTAINS THE CONTROL", () => {
-  const rule = CODE.match(/\.date-field\s*\{([^}]*)\}/);
-  assert.ok(rule, "the .date-field containment rule is gone");
-  const css = rule[1];
-  // A single grid track of minmax(0, 1fr) caps the width and kills the item's
-  // automatic minimum — the part min-width on the control cannot reach.
-  assert.ok(/grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)/.test(css),
-    "the minmax(0, 1fr) track is gone — an oversized control can push the column open again");
-  assert.ok(/display:\s*grid/.test(css), "the wrapper is no longer a grid container");
-  // The backstop. clip is preferred because, unlike hidden, it does not turn the
-  // wrapper into a scroll container; hidden is kept first as the fallback for
-  // Safari versions without clip.
-  assert.ok(/overflow-x:\s*hidden/.test(css) && /overflow-x:\s*clip/.test(css),
-    "the overflow-x backstop (hidden then clip) is gone");
-  assert.ok(css.indexOf("hidden") < css.indexOf("clip"),
-    "clip must come after hidden or older Safari wins and the scroll container returns");
+test("THE VISIBLE BOX BELONGS TO THE SHELL, NOT THE NATIVE CONTROL", () => {
+  const shell = CODE.match(/\.date-shell\s*\{([^}]*)\}/);
+  assert.ok(shell, "the .date-shell rule is gone — the control paints its own edge again");
+  const css = shell[1];
+  for (const [what, re] of [
+    ["background", /background:\s*#2E2E2E/],
+    ["border", /border:\s*1\.5px solid #3D3D3D/],
+    ["corner radius", /border-radius:\s*10px/],
+    // overflow:hidden on a rounded box clips along the curve, so an oversized
+    // control is hidden without squaring the corner off.
+    ["overflow clipping", /overflow:\s*hidden/],
+    ["width containment", /grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)/],
+  ]) {
+    assert.ok(re.test(css), `the shell lost its ${what}`);
+  }
 });
 
-test("the wrapper markup actually uses the containment class", () => {
-  // A rule nothing references is decoration. Pin the binding too.
-  assert.ok(/className="date-field"/.test(CODE), "the MATCH DATE wrapper lost className=\"date-field\"");
-  const wrapper = CODE.match(/className="date-field"[\s\S]*?<input type="date"/);
-  assert.ok(wrapper, "the date input is no longer inside the .date-field wrapper");
+test("THE NATIVE CONTROL PAINTS NO EDGE OF ITS OWN", () => {
+  // This is the whole fix. If the control draws a background, a border or a
+  // corner, then its width becomes visible again and can be clipped again.
+  const css = CODE.match(/input\[type="date"\]\s*\{([^}]*)\}/)[1];
+  for (const [what, re] of [
+    ["transparent background", /background:\s*transparent/],
+    ["no border", /border:\s*0/],
+    ["no corner radius", /border-radius:\s*0/],
+  ]) {
+    assert.ok(re.test(css), `the date control regained a visible ${what.replace(/^(no|transparent) /, "")}`);
+  }
+  // And no inline style may put them back.
+  const tag = CODE.match(/<input type="date"[\s\S]*?\/>/)[0];
+  for (const banned of ["background", "border", "borderRadius"]) {
+    assert.ok(!tag.includes(banned), `the date input has an inline ${banned} again`);
+  }
 });
 
-test("the control itself is still fully constrained", () => {
+test("focus still shows, on the element that now owns the border", () => {
+  assert.ok(/\.date-shell:focus-within\s*\{[^}]*border-color:\s*#F0A500/.test(CODE),
+    "focus no longer highlights the date field");
+  // The old inline handlers coloured a border that no longer exists.
+  const tag = CODE.match(/<input type="date"[\s\S]*?\/>/)[0];
+  assert.ok(!/onFocus|onBlur/.test(tag), "dead inline focus handlers are back on the date input");
+});
+
+test("the control is still contained, and still fills the shell", () => {
   const css = CODE.match(/input\[type="date"\]\s*\{([^}]*)\}/)[1];
   for (const [prop, re] of [
-    ["display: block", /display:\s*block/],            // defeats iOS 17 ignoring width on inline-flex
+    ["display: block", /display:\s*block/],
     ["width: 100%", /width:\s*100%/],
     ["max-width: 100%", /max-width:\s*100%/],
     ["min-width: 0", /min-width:\s*0/],
@@ -194,24 +214,34 @@ test("the control itself is still fully constrained", () => {
   ]) {
     assert.ok(re.test(css), `the date control lost ${prop}`);
   }
+  assert.ok(/\.date-field\s*\{[^}]*grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)/.test(CODE),
+    "the outer field lost its width containment");
+  assert.ok(/::-webkit-datetime-edit[^{]*\{[^}]*min-width:\s*0/.test(CODE),
+    "the shadow-tree constraint is gone");
 });
 
-test("the control's internal date fields cannot paint past their own host", () => {
-  // The host box being the right size is not sufficient: WebKit lays the day,
-  // month and year fields out in the control's shadow tree, and that inner
-  // content has its own minimum.
-  assert.ok(/::-webkit-datetime-edit[^{]*\{[^}]*min-width:\s*0/.test(CODE),
-    "the shadow-tree constraint on ::-webkit-datetime-edit is gone");
+test("the field still LOOKS like its two siblings", () => {
+  // The Name and Opposition inputs define the house style; the shell must match
+  // them, or the date field reads as a different kind of control.
+  const sibling = CODE.match(/placeholder=\{f\.placeholder\}[\s\S]*?\/>/)[0];
+  const shell = CODE.match(/\.date-shell\s*\{([^}]*)\}/)[1];
+  assert.ok(sibling.includes('background:"#2E2E2E"') && /background:\s*#2E2E2E/.test(shell),
+    "the date field's background drifted from the text inputs");
+  assert.ok(sibling.includes('border:"1.5px solid #3D3D3D"') && /border:\s*1\.5px solid #3D3D3D/.test(shell),
+    "the date field's border drifted from the text inputs");
+  assert.ok(sibling.includes("borderRadius:10") && /border-radius:\s*10px/.test(shell),
+    "the date field's corner radius drifted from the text inputs");
+  // The value reads left-aligned like every other field, not centred.
+  assert.ok(/::-webkit-date-and-time-value\s*\{[^}]*text-align:\s*left/.test(CODE),
+    "the date value is no longer left-aligned to match the other fields");
 });
 
 test("THE NATIVE iOS PICKER IS PRESERVED", () => {
-  // Removing the native appearance would "fix" the width by replacing the
-  // control a coach actually taps. Not an acceptable trade.
   assert.ok(!/appearance:\s*none/i.test(CODE),
     "-webkit-appearance:none strips the native iOS date picker");
 });
 
-test("the fix is CSS only — date behaviour and stored values are untouched", () => {
+test("the fix is presentation only — behaviour and stored values untouched", () => {
   assert.ok(/match_date:\s*info\.match_date/.test(CODE), "match_date storage changed");
   assert.ok(/submitted_at:\s*Date\.now\(\)/.test(CODE), "submitted_at storage changed");
   assert.ok(/match_date:\s*todayISO\(\)/.test(CODE), "the today pre-fill changed");
