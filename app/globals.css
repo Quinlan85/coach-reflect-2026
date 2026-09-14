@@ -1,2 +1,52 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0A1520; }
+
+/* ── CQ product-family primitives ────────────────────────────────────────────
+   The MINIMUM needed to make Coach Reflect read as the same product family as
+   the athlete reflection tool. This is deliberately not a design system: the
+   palette, the screens, the instrument and every construct are untouched. Only
+   typography, the rating control and focus are defined here.
+
+   THREE VOICES, distinguishable without reading a word — the same idea the
+   athlete product settled on, applied to the coach's job rather than copied:
+
+     --cq-ui     CQ speaking. Geist. Restrained, gets out of the way.
+     --cq-voice  THE COACH speaking. A serif. Their commitment, their sentences,
+                 the words they typed and the words replayed back to them.
+     --cq-meta   The instrument speaking. Geist Mono, small and wide-tracked,
+                 for step labels, field labels and counters only.
+
+   Before this, the whole product was Courier New and Georgia — Courier for all
+   furniture, Georgia for everything else including CQ's own copy. The serif was
+   therefore meaningless: it said nothing about who was talking. It now marks
+   the coach's own words and nothing else.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --cq-ui: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --cq-meta: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --cq-voice: Georgia, "Iowan Old Style", "Times New Roman", serif;
+
+  /* Ratings only. A coach's number is a self-report, so the selected value is
+     MARKED, never graded: the same single accent at every value from 1 to 10,
+     and no fill that implies ten is a pass and three is a fail. */
+  --cq-accent: #F0A500;
+  --cq-on-accent: #111111;
+  --cq-control: #2E2E2E;
+  --cq-control-text: #9A9A9A;
+}
+
+/* Was #0A1520 — the green palette this product stopped using in commit 060f712.
+   Invisible in practice because every screen paints its own charcoal over it,
+   but it was the last place the retired palette was still asserted. */
+body { background: #1A1A1A; font-family: var(--cq-ui); }
+
+/* Focus must survive a restyle. These buttons carry border:none, so without an
+   explicit ring a keyboard user gets nothing at all. */
+.cq-focus:focus-visible {
+  outline: 2px solid var(--cq-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cq-rating { transition: none !important; }
+}

@@ -1,6 +1,6 @@
 // @ts-nocheck
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { dateLabel, followUpOf, orderedForDisplay, previousCommitment } from "./history.mjs";
 
 const CQ_LOGO = "/logo.png";
@@ -51,6 +51,34 @@ const logCompletion = async (name, opposition, date) => {
 };
 
 
+// KEEPING THE SUBMIT CONTROL ABOVE THE iOS KEYBOARD.
+//
+// THE LESSON IS BORROWED, THE MECHANISM IS NOT. On iOS only the VISUAL viewport
+// shrinks when the keyboard opens; the LAYOUT viewport never does. Anything
+// positioned against innerHeight therefore ends up underneath the keyboard —
+// and a position:fixed bar is positioned against exactly that. Measured here
+// with the keyboard up: the visible region ended at 508px while "See My Review"
+// sat at 785-830px, completely hidden.
+//
+// The athlete product solves this for an in-flow control by reserving scroll
+// room and scrolling to it. That does not apply to a fixed bar, which scrolling
+// cannot move. So the same MEASUREMENT drives a different action: the bar is
+// lifted by the measured inset so it rests on top of the keyboard, and the
+// focused field is kept clear of the bar's new position.
+//
+//   inset = innerHeight - (visualViewport.height + visualViewport.offsetTop)
+//
+// On iOS with the keyboard up that is the keyboard plus its accessory bar.
+// Anywhere the layout viewport does shrink, and with no keyboard, it is 0 and
+// every line below becomes a no-op.
+const FOOTER_GAP = 12;
+
+function visibleInset() {
+  const vv = typeof window !== "undefined" && window.visualViewport;
+  if (!vv) return 0;
+  return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+}
+
 const todayISO = () => {
   // Local date, not UTC. `toISOString()` shifts across midnight for anyone west
   // of Greenwich and would pre-fill yesterday's date.
@@ -79,8 +107,8 @@ function ProgressBar({ step }) {
       </div>
       {step > 0 && step < TOTAL_STEPS && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: "#F0A500", fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2 }}>{STEP_LABELS[step].toUpperCase()}</span>
-          <span style={{ color: "#666666", fontFamily: "'Courier New', monospace", fontSize: 10 }}>{step} of {TOTAL_STEPS - 1}</span>
+          <span style={{ color: "#F0A500", fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2 }}>{STEP_LABELS[step].toUpperCase()}</span>
+          <span style={{ color: "#666666", fontFamily: "var(--cq-meta)", fontSize: 10 }}>{step} of {TOTAL_STEPS - 1}</span>
         </div>
       )}
     </div>
@@ -90,17 +118,44 @@ function ProgressBar({ step }) {
 function RatingRow({ label, desc, value, onChange }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{ marginBottom: 6 }}>
+      <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: "#CCCCCC", fontFamily: "'Courier New', monospace", fontSize: 11, letterSpacing: 2 }}>{label.toUpperCase()}</span>
-          {value > 0 && <span style={{ color: "#CCCCCC", fontSize: 11, fontFamily: "'Courier New', monospace" }}>{value} — {RATING_LABELS[value]}</span>}
+          <span style={{ color: "#CCCCCC", fontFamily: "var(--cq-meta)", fontSize: 11, letterSpacing: 2 }}>{label.toUpperCase()}</span>
+          {value > 0 && <span style={{ color: "#CCCCCC", fontSize: 11, fontFamily: "var(--cq-meta)" }}>{value} — {RATING_LABELS[value]}</span>}
         </div>
-        <div style={{ color: "#666666", fontSize: 11, fontFamily: "Georgia, serif", marginTop: 3, fontStyle: "italic" }}>{desc}</div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "var(--cq-ui)", marginTop: 3, fontStyle: "italic" }}>{desc}</div>
       </div>
-      <div style={{ display: "flex", gap: 5 }}>
-        {[1,2,3,4,5,6,7,8,9,10].map(n => (
-          <button key={n} onClick={() => onChange(n)} style={{ flex: 1, height: 38, borderRadius: 6, border: "none", background: value === n ? "#F0A500" : value > 0 && n <= value ? "#F0A50022" : "#2E2E2E", color: value === n ? "#111111" : "#9A9A9A", fontWeight: "bold", fontSize: 12, cursor: "pointer", transition: "all 0.15s ease", fontFamily: "'Courier New', monospace", transform: value === n ? "scale(1.1)" : "scale(1)" }}>{n}</button>
-        ))}
+      {/* TEN BUTTONS ACROSS A PHONE CANNOT BE TAPPED RELIABLY. Measured at
+          iPhone width they were 29 x 38 — under the 44px minimum in BOTH
+          dimensions, on the one control a coach cannot skip. A mis-tap here
+          does not annoy, it FALSIFIES: a coach who meant 7 and hit 6 has
+          recorded something untrue about their own composure and will never
+          notice. Two rows of five buys roughly 63 x 44 with no change to the
+          scale, the anchors, the values or anything stored.
+
+          MARKED, NOT GRADED. The old control filled every button up to the
+          chosen value, which reads as a gauge — ten full, three nearly empty.
+          A self-report is not a score out of ten to be filled up, so the
+          selected value now carries the accent and nothing else does. */}
+      <div role="group" aria-label={label}
+        style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6 }}>
+        {[1,2,3,4,5,6,7,8,9,10].map(n => {
+          const isSelected = value === n;
+          return (
+            <button key={n} onClick={() => onChange(n)} aria-pressed={isSelected}
+              className="cq-focus cq-rating"
+              style={{
+                width: "100%", height: 44, borderRadius: 8, border: "none",
+                background: isSelected ? "var(--cq-accent)" : "var(--cq-control)",
+                color: isSelected ? "var(--cq-on-accent)" : "var(--cq-control-text)",
+                fontWeight: isSelected ? 600 : 500, fontSize: 15, cursor: "pointer",
+                fontFamily: "var(--cq-meta)", fontVariantNumeric: "tabular-nums",
+                transition: "background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease",
+                transform: isSelected ? "translateY(-1px)" : "translateY(0)",
+                boxShadow: isSelected ? "0 1px 3px rgba(0,0,0,0.45)" : "none",
+              }}>{n}</button>
+          );
+        })}
       </div>
     </div>
   );
@@ -112,7 +167,7 @@ function ChipSelector({ items, selected, onToggle, color }) {
       {items.map(d => {
         const isSelected = selected.includes(d);
         return (
-          <button key={d} onClick={() => onToggle(d)} style={{ padding: "10px 14px", borderRadius: 40, border: `1.5px solid ${isSelected ? color : "#3D3D3D"}`, background: isSelected ? `${color}22` : "#242424", color: isSelected ? color : "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 12, cursor: "pointer", transition: "all 0.15s ease" }}>{d}</button>
+          <button key={d} onClick={() => onToggle(d)} className="cq-focus" style={{ padding: "10px 14px", borderRadius: 40, border: `1.5px solid ${isSelected ? color : "#3D3D3D"}`, background: isSelected ? `${color}22` : "#242424", color: isSelected ? color : "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 12, cursor: "pointer", transition: "all 0.15s ease" }}>{d}</button>
         );
       })}
     </div>
@@ -123,8 +178,8 @@ function SelectedSummary({ items, color, bg }) {
   if (!items.length) return null;
   return (
     <div style={{ marginTop: 16, padding: "10px 14px", background: bg, borderRadius: 10, border: `1px solid ${color}22` }}>
-      <div style={{ color, fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2, marginBottom: 4 }}>SELECTED</div>
-      <div style={{ color: "#CCCCCC", fontSize: 12, fontFamily: "Georgia, serif" }}>{items.join(" · ")}</div>
+      <div style={{ color, fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2, marginBottom: 4 }}>SELECTED</div>
+      <div style={{ color: "#CCCCCC", fontSize: 12, fontFamily: "var(--cq-ui)" }}>{items.join(" · ")}</div>
     </div>
   );
 }
@@ -151,17 +206,17 @@ function SPDashboard({ onBack }) {
 
   if (!unlocked) return (
     <div style={{ padding: "40px 22px", maxWidth: 500, margin: "0 auto" }}>
-      <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 11, cursor: "pointer", marginBottom: 30 }}>← BACK</button>
-      <div style={{ color: "#F0F0F0", fontFamily: "Georgia, serif", fontWeight: "bold", fontSize: 24, marginBottom: 6 }}>Sport Psychologist Access</div>
-      <div style={{ color: "#9A9A9A", fontSize: 14, marginBottom: 30, fontFamily: "Georgia, serif" }}>Enter your PIN to view coach completions.</div>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 11, cursor: "pointer", marginBottom: 30 }}>← BACK</button>
+      <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-ui)", fontWeight: "bold", fontSize: 24, marginBottom: 6 }}>Sport Psychologist Access</div>
+      <div style={{ color: "#9A9A9A", fontSize: 14, marginBottom: 30, fontFamily: "var(--cq-ui)" }}>Enter your PIN to view coach completions.</div>
       <input type="password" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === "Enter" && tryPin()} placeholder="Enter PIN"
-        style={{ width: "100%", background: "#242424", border: `1.5px solid ${pinError ? "#E74C3C" : "#2E2E2E"}`, borderRadius: 10, color: "#F0F0F0", padding: "14px 16px", fontSize: 18, fontFamily: "'Courier New', monospace", outline: "none", letterSpacing: 4, marginBottom: 12 }} />
-      {pinError && <div style={{ color: "#E74C3C", fontSize: 12, fontFamily: "'Courier New', monospace", marginBottom: 12 }}>Incorrect PIN. Try again.</div>}
-      <button onClick={tryPin} style={{ width: "100%", padding: 14, background: "#F0A500", border: "none", borderRadius: 10, color: "#111111", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 13, cursor: "pointer", letterSpacing: 2 }}>UNLOCK →</button>
+        style={{ width: "100%", background: "#242424", border: `1.5px solid ${pinError ? "#E74C3C" : "#2E2E2E"}`, borderRadius: 10, color: "#F0F0F0", padding: "14px 16px", fontSize: 18, fontFamily: "var(--cq-meta)", outline: "none", letterSpacing: 4, marginBottom: 12 }} />
+      {pinError && <div style={{ color: "#E74C3C", fontSize: 12, fontFamily: "var(--cq-meta)", marginBottom: 12 }}>Incorrect PIN. Try again.</div>}
+      <button onClick={tryPin} style={{ width: "100%", padding: 14, background: "#F0A500", border: "none", borderRadius: 10, color: "#111111", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 13, cursor: "pointer", letterSpacing: 2 }}>UNLOCK →</button>
     </div>
   );
 
-  if (!completions) return <div style={{ padding: "40px 22px", textAlign: "center" }}><div style={{ color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 13 }}>Loading...</div></div>;
+  if (!completions) return <div style={{ padding: "40px 22px", textAlign: "center" }}><div style={{ color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 13 }}>Loading...</div></div>;
 
   const byWeek = {};
   completions.forEach(c => { const wk = getWeekKey(c.timestamp); if (!byWeek[wk]) byWeek[wk] = []; byWeek[wk].push(c); });
@@ -175,34 +230,34 @@ function SPDashboard({ onBack }) {
     <div style={{ padding: "20px 22px 60px", maxWidth: 500, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <div style={{ color: "#F0A500", fontSize: 12, fontFamily: "'Courier New', monospace", letterSpacing: 3, marginBottom: 2 }}>CONOR QUINLAN</div>
-          <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 15, letterSpacing: 1 }}>SPORT PSYCHOLOGIST DASHBOARD</div>
+          <div style={{ color: "#F0A500", fontSize: 12, fontFamily: "var(--cq-meta)", letterSpacing: 3, marginBottom: 2 }}>CONOR QUINLAN</div>
+          <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 15, letterSpacing: 1 }}>SPORT PSYCHOLOGIST DASHBOARD</div>
         </div>
         <img src={CQ_LOGO} alt="CQ" style={{ height: 44, width: "auto", opacity: 0.9 }} />
-        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 11, cursor: "pointer" }}>← BACK</button>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 11, cursor: "pointer" }}>← BACK</button>
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <div style={{ flex: 1, background: "#242424", borderRadius: 12, padding: "16px", border: "1px solid #F0A50044", textAlign: "center" }}>
-          <div style={{ color: "#F0A500", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 36 }}>{thisWeek.length}</div>
-          <div style={{ color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2, marginTop: 4 }}>THIS WEEK</div>
+          <div style={{ color: "#F0A500", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 36 }}>{thisWeek.length}</div>
+          <div style={{ color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2, marginTop: 4 }}>THIS WEEK</div>
         </div>
         <div style={{ flex: 1, background: "#242424", borderRadius: 12, padding: "16px", border: "1px solid #2E2E2E", textAlign: "center" }}>
-          <div style={{ color: "#CCCCCC", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 36 }}>{completions.length}</div>
-          <div style={{ color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2, marginTop: 4 }}>ALL TIME</div>
+          <div style={{ color: "#CCCCCC", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 36 }}>{completions.length}</div>
+          <div style={{ color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2, marginTop: 4 }}>ALL TIME</div>
         </div>
       </div>
 
       <div style={{ background: "#242424", borderRadius: 12, padding: "14px 16px", marginBottom: 16, border: "1px solid #2E2E2E" }}>
-        <div style={{ color: "#F0A500", fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>✓ COMPLETED THIS WEEK</div>
-        {thisWeek.length === 0 ? <div style={{ color: "#666666", fontFamily: "Georgia, serif", fontSize: 14 }}>No completions yet this week.</div> :
+        <div style={{ color: "#F0A500", fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>✓ COMPLETED THIS WEEK</div>
+        {thisWeek.length === 0 ? <div style={{ color: "#666666", fontFamily: "var(--cq-ui)", fontSize: 14 }}>No completions yet this week.</div> :
           thisWeek.map((c, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 10, marginBottom: 10, borderBottom: i < thisWeek.length-1 ? "1px solid #2E2E2E" : "none" }}>
               <div>
-                <div style={{ color: "#F0F0F0", fontFamily: "Georgia, serif", fontSize: 14 }}>{c.name}</div>
-                <div style={{ color: "#666666", fontFamily: "'Courier New', monospace", fontSize: 10, marginTop: 2 }}>vs {c.opposition}</div>
+                <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-ui)", fontSize: 14 }}>{c.name}</div>
+                <div style={{ color: "#666666", fontFamily: "var(--cq-meta)", fontSize: 10, marginTop: 2 }}>vs {c.opposition}</div>
               </div>
-              <div style={{ color: "#666666", fontFamily: "'Courier New', monospace", fontSize: 10 }}>{c.date}</div>
+              <div style={{ color: "#666666", fontFamily: "var(--cq-meta)", fontSize: 10 }}>{c.date}</div>
             </div>
           ))
         }
@@ -210,15 +265,15 @@ function SPDashboard({ onBack }) {
 
       {allCoaches.length > 0 && (
         <div style={{ background: "#242424", borderRadius: 12, padding: "14px 16px", border: "1px solid #2E2E2E" }}>
-          <div style={{ color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>ALL COACHES — TOTAL REVIEWS</div>
+          <div style={{ color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>ALL COACHES — TOTAL REVIEWS</div>
           {allCoaches.map((p, i) => {
             const total = coachTotals[p] || 0;
             const pct = Math.min((total / Math.max(...Object.values(coachTotals))) * 100, 100);
             return (
               <div key={p} style={{ marginBottom: i < allCoaches.length-1 ? 12 : 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ color: "#F0F0F0", fontFamily: "Georgia, serif", fontSize: 13 }}>{p}</span>
-                  <span style={{ color: "#CCCCCC", fontFamily: "'Courier New', monospace", fontSize: 12, fontWeight: "bold" }}>{total}</span>
+                  <span style={{ color: "#F0F0F0", fontFamily: "var(--cq-ui)", fontSize: 13 }}>{p}</span>
+                  <span style={{ color: "#CCCCCC", fontFamily: "var(--cq-meta)", fontSize: 12, fontWeight: "bold" }}>{total}</span>
                 </div>
                 <div style={{ height: 4, background: "#2E2E2E", borderRadius: 2, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${pct}%`, background: "#3D3D3D", borderRadius: 2, transition: "width 0.5s ease" }} />
@@ -240,7 +295,7 @@ function WhenLabel({ review, size = 12 }) {
   const d = dateLabel(review);
   if (!d.text) return null;
   return (
-    <div style={{ color: "#666666", fontSize: size, fontFamily: "'Courier New', monospace", marginTop: 3 }}>
+    <div style={{ color: "#666666", fontSize: size, fontFamily: "var(--cq-meta)", marginTop: 3 }}>
       {d.stated ? d.text : `logged ${d.text}`}
     </div>
   );
@@ -251,45 +306,45 @@ function HistoryView({ reviews, onBack, onDelete }) {
   if (reviews.length === 0) return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
       <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-      <div style={{ color: "#9A9A9A", fontFamily: "Georgia, serif", fontSize: 15 }}>No reviews yet.</div>
-      <button onClick={onBack} style={{ marginTop: 28, padding: "12px 24px", background: "#F0A500", border: "none", borderRadius: 10, color: "#111111", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 12, cursor: "pointer", letterSpacing: 1 }}>← BACK</button>
+      <div style={{ color: "#9A9A9A", fontFamily: "var(--cq-ui)", fontSize: 15 }}>No reviews yet.</div>
+      <button onClick={onBack} style={{ marginTop: 28, padding: "12px 24px", background: "#F0A500", border: "none", borderRadius: 10, color: "#111111", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 12, cursor: "pointer", letterSpacing: 1 }}>← BACK</button>
     </div>
   );
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 14, letterSpacing: 1 }}>MY REVIEWS</div>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "'Courier New', monospace", fontSize: 11, cursor: "pointer" }}>← BACK</button>
+        <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 14, letterSpacing: 1 }}>MY REVIEWS</div>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#9A9A9A", fontFamily: "var(--cq-meta)", fontSize: 11, cursor: "pointer" }}>← BACK</button>
       </div>
       {orderedForDisplay(reviews).map((rev, idx) => (
         <div key={idx} style={{ background: "#242424", borderRadius: 12, marginBottom: 10, border: "1px solid #2E2E2E", overflow: "hidden" }}>
           <div onClick={() => setExpanded(expanded===idx?null:idx)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 13 }}>vs {rev.opposition}</div>
+              <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 13 }}>vs {rev.opposition}</div>
               <WhenLabel review={rev} />
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:14}}>{v||"—"}</div>; })}
+              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{color:"#CCCCCC",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:14}}>{v||"—"}</div>; })}
               <span style={{ color:"#666666", marginLeft:4 }}>{expanded===idx?"▴":"▾"}</span>
             </div>
           </div>
           {expanded === idx && (
             <div style={{ padding: "0 16px 16px", borderTop: "1px solid #2E2E2E", paddingTop: 14 }}>
-              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"#9A9A9A",fontSize:12,fontFamily:"'Courier New',monospace"}}>{r.key}</span><span style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:12}}>{v ? `${v} \u00b7 ${RATING_LABELS[v]}` : "—"}</span></div>; })}
-              {rev.went_well?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #F0A500", paddingLeft:12 }}><div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>✓ WENT WELL</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"Georgia, serif" }}>{rev.went_well.join(" · ")}</div></div>}
-              {rev.development?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #3498DB", paddingLeft:12 }}><div style={{ color:"#3498DB", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>△ DEVELOPMENT</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"Georgia, serif" }}>{rev.development.join(" · ")}</div></div>}
-              {rev.action?.will_change && <div style={{ marginTop:12, borderLeft:"2px solid #E74C3C", paddingLeft:12 }}><div style={{ color:"#E74C3C", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>→ WILL CHANGE</div><div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"Georgia, serif" }}>{rev.action.will_change}</div></div>}
+              {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:"#9A9A9A",fontSize:12,fontFamily:"var(--cq-meta)"}}>{r.key}</span><span style={{color:"#CCCCCC",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:12}}>{v ? `${v} \u00b7 ${RATING_LABELS[v]}` : "—"}</span></div>; })}
+              {rev.went_well?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #F0A500", paddingLeft:12 }}><div style={{ color:"#F0A500", fontFamily:"var(--cq-meta)", fontSize:9, letterSpacing:2, marginBottom:4 }}>✓ WENT WELL</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"var(--cq-ui)" }}>{rev.went_well.join(" · ")}</div></div>}
+              {rev.development?.length > 0 && <div style={{ marginTop:12, borderLeft:"2px solid #3498DB", paddingLeft:12 }}><div style={{ color:"#3498DB", fontFamily:"var(--cq-meta)", fontSize:9, letterSpacing:2, marginBottom:4 }}>△ DEVELOPMENT</div><div style={{ color:"#CCCCCC", fontSize:12, fontFamily:"var(--cq-ui)" }}>{rev.development.join(" · ")}</div></div>}
+              {rev.action?.will_change && <div style={{ marginTop:12, borderLeft:"2px solid #E74C3C", paddingLeft:12 }}><div style={{ color:"#E74C3C", fontFamily:"var(--cq-meta)", fontSize:9, letterSpacing:2, marginBottom:4 }}>→ WILL CHANGE</div><div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"var(--cq-voice)" }}>{rev.action.will_change}</div></div>}
               {/* Both halves together: the commitment as it was written, and
                   what the coach said happened. No verdict is drawn from the
                   pair — that judgement belongs in a conversation, not here. */}
               {followUpOf(rev) && (
                 <div style={{ marginTop:12, borderLeft:"2px solid #3D3D3D", paddingLeft:12 }}>
-                  <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:9, letterSpacing:2, marginBottom:4 }}>↺ FOLLOWED UP ON</div>
-                  <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"Georgia, serif", fontStyle:"italic" }}>&ldquo;{followUpOf(rev).antecedent}&rdquo;</div>
-                  <div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"Georgia, serif", marginTop:4 }}>{followUpOf(rev).response}</div>
+                  <div style={{ color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:9, letterSpacing:2, marginBottom:4 }}>↺ FOLLOWED UP ON</div>
+                  <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"var(--cq-voice)", fontStyle:"italic" }}>&ldquo;{followUpOf(rev).antecedent}&rdquo;</div>
+                  <div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"var(--cq-voice)", marginTop:4 }}>{followUpOf(rev).response}</div>
                 </div>
               )}
-              <button onClick={() => { setExpanded(null); onDelete(rev); }} style={{ marginTop:12, padding:"8px 14px", background:"transparent", border:"1px solid #3D3D3D", borderRadius:8, color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:10, cursor:"pointer", letterSpacing:1 }}>DELETE</button>
+              <button onClick={() => { setExpanded(null); onDelete(rev); }} style={{ marginTop:12, padding:"8px 14px", background:"transparent", border:"1px solid #3D3D3D", borderRadius:8, color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:10, cursor:"pointer", letterSpacing:1 }}>DELETE</button>
             </div>
           )}
         </div>
@@ -307,6 +362,11 @@ export default function App() {
   const [development, setDevelopment] = useState([]);
   const [action, setAction] = useState({ keep_doing: "", will_change: "", how_when: "" });
   const [animDir, setAnimDir] = useState(1);
+  // How much of the screen the on-screen keyboard is currently covering, as the
+  // browser reports it. Zero everywhere that is not iOS with a keyboard up.
+  const [kbInset, setKbInset] = useState(0);
+  const footerRef = useRef(null);
+  const focusedField = useRef(null);
   const [reviews, setReviews] = useState([]);
   const [savedName, setSavedName] = useState("");
   const [followUp, setFollowUp] = useState("");
@@ -316,6 +376,44 @@ export default function App() {
   // The commitment from the last reflection that carried one. Read from stored
   // history, replayed verbatim, and never scored.
   const prevCommitment = previousCommitment(reviews);
+
+  useEffect(() => {
+    const vv = typeof window !== "undefined" && window.visualViewport;
+    if (!vv) return undefined;
+    // The keyboard animates in and the viewport reports when it has landed.
+    // React to that rather than racing it with a timer.
+    const onViewportChange = () => setKbInset(visibleInset());
+    setKbInset(visibleInset());
+    vv.addEventListener("resize", onViewportChange);
+    vv.addEventListener("scroll", onViewportChange);
+    return () => {
+      vv.removeEventListener("resize", onViewportChange);
+      vv.removeEventListener("scroll", onViewportChange);
+    };
+  }, []);
+
+  // Bring a focused field clear of BOTH the keyboard and the lifted bar. Only
+  // scrolls when something is actually covered, so the position iOS already
+  // gives the field is left alone.
+  const keepAboveFooter = (el) => {
+    if (!el || typeof window === "undefined") return;
+    const bar = footerRef.current ? footerRef.current.getBoundingClientRect().height : 0;
+    const limit = window.innerHeight - visibleInset() - bar - FOOTER_GAP;
+    const hidden = el.getBoundingClientRect().bottom - limit;
+    if (hidden > 1) window.scrollBy({ top: hidden, behavior: "smooth" });
+  };
+
+  // SCROLL ONLY ONCE THE RESERVED ROOM HAS RENDERED. Doing this inside the
+  // resize handler scrolls against a page that has not grown yet, so it asks
+  // for a scroll the document cannot perform and silently does nothing — the
+  // mistake that made the first version of this fix a no-op on the athlete
+  // product's iPhone.
+  useEffect(() => {
+    if (focusedField.current && document.activeElement === focusedField.current) {
+      keepAboveFooter(focusedField.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kbInset]);
 
   const goStep = (n) => { setAnimDir(n > step ? 1 : -1); setStep(n); };
 
@@ -378,8 +476,8 @@ export default function App() {
   const Header = () => (
     <div style={{ background: "#1A1A1A", borderBottom: "2px solid #F0A500", padding: "10px 20px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       <div>
-        <div style={{ color: "#F0A500", fontSize: 12, fontFamily: "'Courier New', monospace", letterSpacing: 3, marginBottom: 2 }}>CONOR QUINLAN</div>
-        <div style={{ color: "#F0F0F0", fontFamily: "'Courier New', monospace", fontWeight: "bold", fontSize: 15, letterSpacing: 1 }}>COACH REFLECTION</div>
+        <div style={{ color: "#F0A500", fontSize: 12, fontFamily: "var(--cq-meta)", letterSpacing: 3, marginBottom: 2 }}>CONOR QUINLAN</div>
+        <div style={{ color: "#F0F0F0", fontFamily: "var(--cq-meta)", fontWeight: "bold", fontSize: 15, letterSpacing: 1 }}>COACH REFLECTION</div>
       </div>
       <img src={CQ_LOGO} alt="CQ" style={{ height: 44, width: "auto", opacity: 0.9 }} />
     </div>
@@ -395,31 +493,31 @@ export default function App() {
         <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, #1A1A1A 70%)" }} />
         <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"0 22px 20px", zIndex:2 }}>
           <div style={{ marginBottom:14 }}>
-            <div style={{ color:"#F0A500", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
-            <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
+            <div style={{ color:"#F0A500", fontSize:12, fontFamily:"var(--cq-meta)", letterSpacing:3, marginBottom:2 }}>CONOR QUINLAN</div>
+            <div style={{ color:"#F0F0F0", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:15, letterSpacing:1 }}>COACH REFLECTION</div>
           </div>
-          <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:26, marginBottom:4 }}>Time to reflect.</div>
-          <div style={{ color:"rgba(255,255,255,0.65)", fontSize:14, fontFamily:"Georgia, serif", lineHeight:1.5 }}>Honest reflection. Better coaching.</div>
+          <div style={{ color:"#F0F0F0", fontFamily:"var(--cq-ui)", fontWeight:"bold", fontSize:26, marginBottom:4 }}>Time to reflect.</div>
+          <div style={{ color:"rgba(255,255,255,0.65)", fontSize:14, fontFamily:"var(--cq-ui)", lineHeight:1.5 }}>Honest reflection. Better coaching.</div>
         </div>
       </div>
       <div style={{ padding:"24px 22px 20px", maxWidth:500, margin:"0 auto", width:"100%" }}>
-        <button onClick={startNew} style={{ width:"100%", padding:18, background:"#F0A500", border:"none", borderRadius:12, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:14, cursor:"pointer", letterSpacing:2, marginBottom:12 }}>START REFLECTION →</button>
-        <button onClick={() => setScreen("history")} style={{ width:"100%", padding:16, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:12, color: reviews.length > 0 ? "#CCCCCC" : "#666666", fontFamily:"'Courier New', monospace", fontSize:14, cursor:"pointer", letterSpacing:1, display:"flex", justifyContent:"center", alignItems:"center", gap:10, marginBottom:12 }}>
+        <button onClick={startNew} style={{ width:"100%", padding:18, background:"#F0A500", border:"none", borderRadius:12, color:"#111111", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:14, cursor:"pointer", letterSpacing:2, marginBottom:12 }}>START REFLECTION →</button>
+        <button onClick={() => setScreen("history")} style={{ width:"100%", padding:16, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:12, color: reviews.length > 0 ? "#CCCCCC" : "#666666", fontFamily:"var(--cq-meta)", fontSize:14, cursor:"pointer", letterSpacing:1, display:"flex", justifyContent:"center", alignItems:"center", gap:10, marginBottom:12 }}>
           <span>MY REVIEWS</span>
           {reviews.length > 0 && <span style={{ background:"#2E2E2E", color:"#F0A500", borderRadius:20, padding:"2px 10px", fontSize:11 }}>{reviews.length}</span>}
         </button>
-        <button onClick={() => setScreen("sp")} style={{ width:"100%", padding:12, background:"transparent", border:"none", borderRadius:12, color:"#3D3D3D", fontFamily:"'Courier New', monospace", fontSize:12, cursor:"pointer", letterSpacing:2, marginTop:8 }}>SPORT PSYCHOLOGIST ACCESS</button>
+        <button onClick={() => setScreen("sp")} style={{ width:"100%", padding:12, background:"transparent", border:"none", borderRadius:12, color:"#3D3D3D", fontFamily:"var(--cq-meta)", fontSize:12, cursor:"pointer", letterSpacing:2, marginTop:8 }}>SPORT PSYCHOLOGIST ACCESS</button>
         {reviews.length > 0 && (
           <div style={{ marginTop:24 }}>
-            <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:12, letterSpacing:2, marginBottom:14 }}>LAST 3 GAMES</div>
+            <div style={{ color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:12, letterSpacing:2, marginBottom:14 }}>LAST 3 GAMES</div>
             {orderedForDisplay(reviews).slice(0,3).map((rev,i) => (
               <div key={i} style={{ background:"#242424", borderRadius:10, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
-                  <div style={{ color:"#F0F0F0", fontSize:13, fontFamily:"Georgia, serif" }}>vs {rev.opposition}</div>
+                  <div style={{ color:"#F0F0F0", fontSize:13, fontFamily:"var(--cq-ui)" }}>vs {rev.opposition}</div>
                   <WhenLabel review={rev} size={11} />
                 </div>
                 <div style={{ display:"flex", gap:6 }}>
-                  {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{textAlign:"center"}}><div style={{color:"#CCCCCC",fontFamily:"'Courier New',monospace",fontWeight:"bold",fontSize:15}}>{v||"—"}</div><div style={{color:"#666666",fontSize:8,fontFamily:"'Courier New',monospace"}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
+                  {RATINGS.map(r => { const v=rev.ratings[r.key]||0; return <div key={r.key} style={{textAlign:"center"}}><div style={{color:"#CCCCCC",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:15}}>{v||"—"}</div><div style={{color:"#666666",fontSize:8,fontFamily:"var(--cq-meta)"}}>{r.key.slice(0,3).toUpperCase()}</div></div>; })}
                 </div>
               </div>
             ))}
@@ -444,26 +542,26 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:"#1A1A1A", display:"flex", flexDirection:"column" }}>
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } .date-field { display: grid; grid-template-columns: minmax(0, 1fr); } .date-shell { display: grid; grid-template-columns: minmax(0, 1fr); background: #2E2E2E; border: 1.5px solid #3D3D3D; border-radius: 10px; overflow: hidden; } .date-shell:focus-within { border-color: #F0A500; } input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; background: transparent; border: 0; border-radius: 0; outline: none; color: #F0F0F0; padding: 14px 16px; font-size: 16px; font-family: Georgia, serif; } input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-fields-wrapper { min-width: 0; max-width: 100%; } input[type="date"]::-webkit-date-and-time-value { text-align: left; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
+      <style>{`@keyframes slideIn { from { opacity:0; transform:translateX(${animDir*20}px); } to { opacity:1; transform:translateX(0); } } .slide { animation: slideIn 0.22s ease; } textarea::placeholder, input::placeholder { color: #3D3D3D; } .date-field { display: grid; grid-template-columns: minmax(0, 1fr); } .date-shell { display: grid; grid-template-columns: minmax(0, 1fr); background: #2E2E2E; border: 1.5px solid #3D3D3D; border-radius: 10px; overflow: hidden; } .date-shell:focus-within { border-color: #F0A500; } input[type="date"] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; background: transparent; border: 0; border-radius: 0; outline: none; color: #F0F0F0; padding: 14px 16px; font-size: 16px; font-family: var(--cq-ui); } input[type="date"]::-webkit-datetime-edit, input[type="date"]::-webkit-datetime-edit-fields-wrapper { min-width: 0; max-width: 100%; } input[type="date"]::-webkit-date-and-time-value { text-align: left; } * { box-sizing: border-box; -webkit-overflow-scrolling: touch; } body { overflow-y: auto !important; } button:active { opacity: 0.85; }`}</style>
       <Header />
-      <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column", justifyContent: step === 5 ? "center" : undefined }}>
+      <div style={{ flex:1, padding:"0 22px", paddingBottom: step === 5 ? 24 : 110 + kbInset, maxWidth:500, margin:"0 auto", width:"100%", display: step === 5 ? "flex" : undefined, flexDirection:"column", justifyContent: step === 5 ? "center" : undefined }}>
         {step < TOTAL_STEPS && <ProgressBar step={step} />}
         <div className="slide" key={`${step}-view`}>
 
           {step === 0 && (
             <div>
-              <div style={{ color:"#F0F0F0", fontFamily:"Georgia, serif", fontWeight:"bold", fontSize:24, marginBottom:6 }}>Let's reflect.</div>
-              <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:30, fontFamily:"Georgia, serif" }}>Honest answers. Better coaching.</div>
+              <div style={{ color:"#F0F0F0", fontFamily:"var(--cq-ui)", fontWeight:"bold", fontSize:24, marginBottom:6 }}>Let's reflect.</div>
+              <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:30, fontFamily:"var(--cq-ui)" }}>Honest answers. Better coaching.</div>
               {[{key:"name",label:"YOUR NAME",placeholder:"Enter your name"},{key:"opposition",label:"OPPOSITION",placeholder:"Opposition team name (e.g. Na Piarsaigh)"}].map(f => (
                 <div key={f.key} style={{ marginBottom:20 }}>
-                  <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>{f.label}</div>
+                  <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"var(--cq-meta)", letterSpacing:2, marginBottom:8 }}>{f.label}</div>
                   <input value={info[f.key]} onChange={e=>setInfo(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder}
-                    style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"Georgia, serif", outline:"none" }}
+                    style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"14px 16px", fontSize:16, fontFamily:"var(--cq-ui)", outline:"none" }}
                     onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
                 </div>
               ))}
               <div className="date-field" style={{ marginBottom:20 }}>
-                <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"'Courier New', monospace", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
+                <div style={{ color:"#9A9A9A", fontSize:12, fontFamily:"var(--cq-meta)", letterSpacing:2, marginBottom:8 }}>MATCH DATE</div>
                 {/* THE NATIVE CONTROL DOES NOT PAINT ITS OWN EDGE, AND THAT IS
                     THE POINT. Two rounds were spent trying to make this control
                     the right width on iOS. Round one failed. Round two contained
@@ -489,31 +587,31 @@ export default function App() {
                 <div className="date-shell">
                   <input type="date" value={info.match_date} onChange={e=>setInfo(p=>({...p,match_date:e.target.value}))} />
                 </div>
-                <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:6, fontStyle:"italic" }}>The day the game was played — change it if you are reflecting later.</div>
+                <div style={{ color:"#666666", fontSize:11, fontFamily:"var(--cq-ui)", marginTop:6, fontStyle:"italic" }}>The day the game was played — change it if you are reflecting later.</div>
               </div>
               {/* Says what actually happens to the data, including the part that
                   is inconvenient. Do not soften this and do not add a claim that
                   installing the app keeps anything safe — it does not. */}
               <div style={{ background:"#242424", borderRadius:10, padding:"12px 14px", border:"1px solid #2E2E2E" }}>
-                <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.55 }}>🔒 Your answers are saved on this phone only. CQ Perform keeps no copy — if you clear your browser or change device, they are gone.</div>
-                <div style={{ color:"#666666", fontSize:13, fontFamily:"Georgia, serif", lineHeight:1.55, marginTop:8 }}>Your name, the opposition and the date are sent to Conor, so he can see that you completed a reflection — not what you wrote.</div>
+                <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"var(--cq-ui)", lineHeight:1.55 }}>🔒 Your answers are saved on this phone only. CQ Perform keeps no copy — if you clear your browser or change device, they are gone.</div>
+                <div style={{ color:"#666666", fontSize:13, fontFamily:"var(--cq-ui)", lineHeight:1.55, marginTop:8 }}>Your name, the opposition and the date are sent to Conor, so he can see that you completed a reflection — not what you wrote.</div>
               </div>
             </div>
           )}
 
           {step === 1 && (
             <div>
-              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:6 }}>Rate yourself.</div>
-              <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:26, fontFamily:"Georgia, serif" }}>Honest scores only — 1 poor, 10 outstanding.</div>
+              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"var(--cq-ui)", fontWeight:"bold", marginBottom:6 }}>Rate yourself.</div>
+              <div style={{ color:"#9A9A9A", fontSize:14, marginBottom:26, fontFamily:"var(--cq-ui)" }}>Honest scores only — 1 poor, 10 outstanding.</div>
               {RATINGS.map(r => <RatingRow key={r.key} label={r.key} desc={r.desc} value={ratings[r.key]||0} onChange={v=>setRatings(p=>({...p,[r.key]:v}))} />)}
             </div>
           )}
 
           {step === 2 && (
             <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#F0A500"}}>✓</span><span style={{color:"#F0A500",fontFamily:"'Courier New', monospace",fontWeight:"bold",fontSize:11,letterSpacing:2}}>WENT WELL</span></div>
-              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:8 }}>What went well today?</div>
-              <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"Georgia, serif", marginBottom:20 }}>Select all that apply.</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#F0A500"}}>✓</span><span style={{color:"#F0A500",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:11,letterSpacing:2}}>WENT WELL</span></div>
+              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"var(--cq-ui)", fontWeight:"bold", marginBottom:8 }}>What went well today?</div>
+              <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"var(--cq-ui)", marginBottom:20 }}>Select all that apply.</div>
               <ChipSelector items={WENT_WELL_PROMPTS} selected={wentWell} onToggle={(d) => toggleItem(wentWell, setWentWell, d)} color="#F0A500" />
               <SelectedSummary items={wentWell} color="#F0A500" bg="#2A1F00" />
             </div>
@@ -521,9 +619,9 @@ export default function App() {
 
           {step === 3 && (
             <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#3498DB"}}>△</span><span style={{color:"#3498DB",fontFamily:"'Courier New', monospace",fontWeight:"bold",fontSize:11,letterSpacing:2}}>DEVELOPMENT</span></div>
-              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:8 }}>What needs work?</div>
-              <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"Georgia, serif", marginBottom:20 }}>Select all that apply.</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#3498DB"}}>△</span><span style={{color:"#3498DB",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:11,letterSpacing:2}}>DEVELOPMENT</span></div>
+              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"var(--cq-ui)", fontWeight:"bold", marginBottom:8 }}>What needs work?</div>
+              <div style={{ color:"#9A9A9A", fontSize:13, fontFamily:"var(--cq-ui)", marginBottom:20 }}>Select all that apply.</div>
               <ChipSelector items={DEVELOPMENT_PROMPTS} selected={development} onToggle={(d) => toggleItem(development, setDevelopment, d)} color="#3498DB" />
               <SelectedSummary items={development} color="#3498DB" bg="#0D0D1A" />
             </div>
@@ -531,27 +629,27 @@ export default function App() {
 
           {step === 4 && (
             <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#E74C3C"}}>▶</span><span style={{color:"#E74C3C",fontFamily:"'Courier New', monospace",fontWeight:"bold",fontSize:11,letterSpacing:2}}>ACTION PLAN</span></div>
-              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"Georgia, serif", fontWeight:"bold", marginBottom:24 }}>What will you do about it?</div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}><span style={{fontSize:20,color:"#E74C3C"}}>▶</span><span style={{color:"#E74C3C",fontFamily:"var(--cq-meta)",fontWeight:"bold",fontSize:11,letterSpacing:2}}>ACTION PLAN</span></div>
+              <div style={{ color:"#F0F0F0", fontSize:22, fontFamily:"var(--cq-ui)", fontWeight:"bold", marginBottom:24 }}>What will you do about it?</div>
               {prevCommitment && (
                 <div style={{ background:"#242424", borderRadius:12, padding:"16px", border:"1px solid #2E2E2E", marginBottom:16 }}>
-                  <div style={{ color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:10, letterSpacing:2, marginBottom:10 }}>LAST TIME YOU SAID</div>
+                  <div style={{ color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:10, letterSpacing:2, marginBottom:10 }}>LAST TIME YOU SAID</div>
                   {/* The coach's own sentence, verbatim. Nothing is summarised,
                       nothing is scored, and there is no right answer below. */}
-                  <div style={{ color:"#F0F0F0", fontSize:15, fontFamily:"Georgia, serif", lineHeight:1.5, fontStyle:"italic", borderLeft:"2px solid #3D3D3D", paddingLeft:12 }}>
+                  <div style={{ color:"#F0F0F0", fontSize:15, fontFamily:"var(--cq-voice)", lineHeight:1.5, fontStyle:"italic", borderLeft:"2px solid #3D3D3D", paddingLeft:12 }}>
                     &ldquo;{prevCommitment.text}&rdquo;
                   </div>
                   {prevCommitment.date.text && (
-                    <div style={{ color:"#666666", fontSize:11, fontFamily:"'Courier New', monospace", marginTop:8, paddingLeft:14 }}>
+                    <div style={{ color:"#666666", fontSize:11, fontFamily:"var(--cq-meta)", marginTop:8, paddingLeft:14 }}>
                       {prevCommitment.date.stated ? prevCommitment.date.text : `logged ${prevCommitment.date.text}`}
                     </div>
                   )}
                   <div style={{ marginTop:16 }}>
-                    <div style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, letterSpacing:1 }}>WHAT HAPPENED WITH THAT?</div>
-                    <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:2, fontStyle:"italic" }}>Optional. Whatever happened is useful — including nothing.</div>
+                    <div style={{ color:"#F0F0F0", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:11, letterSpacing:1 }}>WHAT HAPPENED WITH THAT?</div>
+                    <div style={{ color:"#666666", fontSize:11, fontFamily:"var(--cq-ui)", marginTop:2, fontStyle:"italic" }}>Optional. Whatever happened is useful — including nothing.</div>
                     <textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="e.g. Held it for most of the game, lost it late on..."
-                      style={{ width:"100%", marginTop:6, background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"12px 14px", fontSize:13, fontFamily:"Georgia, serif", outline:"none", resize:"none", lineHeight:1.6 }}
-                      onFocus={e=>e.target.style.borderColor="#F0A500"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
+                      style={{ width:"100%", marginTop:6, background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"12px 14px", fontSize:16, fontFamily:"var(--cq-voice)", outline:"none", resize:"none", lineHeight:1.6 }}
+                      onFocus={e=>{ e.target.style.borderColor="#F0A500"; focusedField.current = e.target; keepAboveFooter(e.target); }} onBlur={e=>{ e.target.style.borderColor="#2E2E2E"; focusedField.current = null; }} />
                   </div>
                 </div>
               )}
@@ -563,12 +661,12 @@ export default function App() {
                 ].map(f => (
                   <div key={f.key} style={{ marginBottom:18 }}>
                     <div style={{ marginBottom:6 }}>
-                      <span style={{ color:"#F0F0F0", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, letterSpacing:1 }}>{f.label}</span>
-                      <div style={{ color:"#666666", fontSize:11, fontFamily:"Georgia, serif", marginTop:2, fontStyle:"italic" }}>{f.sub}</div>
+                      <span style={{ color:"#F0F0F0", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:11, letterSpacing:1 }}>{f.label}</span>
+                      <div style={{ color:"#666666", fontSize:11, fontFamily:"var(--cq-ui)", marginTop:2, fontStyle:"italic" }}>{f.sub}</div>
                     </div>
                     <textarea rows={2} value={action[f.key]} onChange={e=>setAction(p=>({...p,[f.key]:e.target.value}))} placeholder={f.ph}
-                      style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"12px 14px", fontSize:13, fontFamily:"Georgia, serif", outline:"none", resize:"none", lineHeight:1.6 }}
-                      onFocus={e=>e.target.style.borderColor="#E74C3C"} onBlur={e=>e.target.style.borderColor="#2E2E2E"} />
+                      style={{ width:"100%", background:"#2E2E2E", border:"1.5px solid #3D3D3D", borderRadius:10, color:"#F0F0F0", padding:"12px 14px", fontSize:16, fontFamily:"var(--cq-voice)", outline:"none", resize:"none", lineHeight:1.6 }}
+                      onFocus={e=>{ e.target.style.borderColor="#E74C3C"; focusedField.current = e.target; keepAboveFooter(e.target); }} onBlur={e=>{ e.target.style.borderColor="#2E2E2E"; focusedField.current = null; }} />
                   </div>
                 ))}
               </div>
@@ -579,8 +677,8 @@ export default function App() {
             <div>
               <div style={{ textAlign:"center", marginBottom:28 }}>
                 <div style={{ fontSize:52, marginBottom:12, color:"#F0A500", lineHeight:1 }}>✓</div>
-                <div style={{ color:"#F0A500", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:34, letterSpacing:3, lineHeight:1.15 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
-                <div style={{ color:"#666666", fontSize:12, marginTop:10, fontFamily:"'Courier New', monospace", letterSpacing:1.5 }}>vs {info.opposition} · saved to your reviews</div>
+                <div style={{ color:"#F0A500", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:34, letterSpacing:3, lineHeight:1.15 }}>DONE, {info.name.split(" ")[0].toUpperCase()}.</div>
+                <div style={{ color:"#666666", fontSize:12, marginTop:10, fontFamily:"var(--cq-meta)", letterSpacing:1.5 }}>vs {info.opposition} · saved to your reviews</div>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:20 }}>
                 {RATINGS.map(r => {
@@ -589,15 +687,43 @@ export default function App() {
                   const label = r.key === "Tactical Setup" ? "TACTICAL" : r.key.toUpperCase();
                   return (
                     <div key={r.key} style={{background:"transparent", borderRadius:14, padding:"20px 12px 16px", textAlign:"center", border:"1.5px solid #F0A500"}}>
-                      <div style={{color:col, fontFamily:"'Courier New',monospace", fontWeight:"bold", fontSize:48, lineHeight:1}}>{v}</div>
-                      <div style={{color:"#AAAAAA", fontSize:10, marginTop:10, fontFamily:"'Courier New',monospace", letterSpacing:1, whiteSpace:"nowrap"}}>{label}</div>
+                      <div style={{color:col, fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:48, lineHeight:1}}>{v}</div>
+                      <div style={{color:"#AAAAAA", fontSize:10, marginTop:10, fontFamily:"var(--cq-meta)", letterSpacing:1, whiteSpace:"nowrap"}}>{label}</div>
                     </div>
                   );
                 })}
               </div>
+              {/* THE REFLECTION ENDED ON FOUR NUMBERS. A coach had just written
+                  three considered sentences — including the one this app will
+                  read back to them next time — and the closing screen showed
+                  them a tick and their ratings. A reflection that ends in
+                  metrics teaches that the metrics were the point.
+
+                  Their own words, unchanged, straight from the state that was
+                  just saved. NOTHING is interpreted, scored, summarised or
+                  generated, and no new label is invented: the two headings are
+                  the instrument's own, exactly as they appear one screen
+                  earlier. WILL CHANGE is required, so it is always present;
+                  HOW & WHEN is optional and simply absent when not given. */}
+              {(action.will_change.trim() || action.how_when.trim()) && (
+                <div style={{ background:"#242424", borderRadius:12, padding:16, marginBottom:20, border:"1px solid #2E2E2E" }}>
+                  {action.will_change.trim() && (
+                    <div>
+                      <div style={{ color:"#F0A500", fontFamily:"var(--cq-meta)", fontSize:10, letterSpacing:2, marginBottom:8 }}>→ WILL CHANGE</div>
+                      <div style={{ color:"#F0F0F0", fontSize:15, fontFamily:"var(--cq-voice)", fontStyle:"italic", lineHeight:1.5 }}>&ldquo;{action.will_change.trim()}&rdquo;</div>
+                    </div>
+                  )}
+                  {action.how_when.trim() && (
+                    <div style={{ marginTop: action.will_change.trim() ? 14 : 0 }}>
+                      <div style={{ color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:10, letterSpacing:2, marginBottom:6 }}>◆ HOW &amp; WHEN</div>
+                      <div style={{ color:"#CCCCCC", fontSize:13, fontFamily:"var(--cq-voice)", lineHeight:1.5 }}>{action.how_when.trim()}</div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{ display:"flex", gap:10 }}>
-                <button onClick={() => setScreen("history")} style={{ flex:1, padding:15, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:10, color:"#CCCCCC", fontFamily:"'Courier New', monospace", fontSize:11, cursor:"pointer", letterSpacing:1 }}>MY REVIEWS</button>
-                <button onClick={() => setScreen("home")} style={{ flex:1, padding:15, background:"#F0A500", border:"none", borderRadius:10, color:"#111111", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:11, cursor:"pointer", letterSpacing:1 }}>HOME</button>
+                <button onClick={() => setScreen("history")} style={{ flex:1, padding:15, background:"transparent", border:"1.5px solid #2E2E2E", borderRadius:10, color:"#CCCCCC", fontFamily:"var(--cq-meta)", fontSize:11, cursor:"pointer", letterSpacing:1 }}>MY REVIEWS</button>
+                <button onClick={() => setScreen("home")} style={{ flex:1, padding:15, background:"#F0A500", border:"none", borderRadius:10, color:"#111111", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:11, cursor:"pointer", letterSpacing:1 }}>HOME</button>
               </div>
             </div>
           )}
@@ -605,9 +731,9 @@ export default function App() {
       </div>
 
       {step < TOTAL_STEPS && (
-        <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#1A1A1A", borderTop:"1px solid #2E2E2E", padding:"14px 22px", display:"flex", gap:10 }}>
-          <button onClick={handleBack} style={{ flex:1, padding:14, background:"transparent", border:"1px solid #2E2E2E", borderRadius:10, color:"#9A9A9A", fontFamily:"'Courier New', monospace", fontSize:13, cursor:"pointer" }}>← Back</button>
-          <button onClick={handleNext} disabled={!canProceed()} style={{ flex:2, padding:14, background:canProceed()?"#F0A500":"#2E2E2E", border:"none", borderRadius:10, color:canProceed()?"#111111":"#666666", fontFamily:"'Courier New', monospace", fontWeight:"bold", fontSize:13, cursor:canProceed()?"pointer":"not-allowed", letterSpacing:1, transition:"all 0.2s ease" }}>
+        <div ref={footerRef} style={{ position:"fixed", bottom:kbInset, left:0, right:0, background:"#1A1A1A", borderTop:"1px solid #2E2E2E", padding:"14px 22px", display:"flex", gap:10 }}>
+          <button onClick={handleBack} className="cq-focus" style={{ flex:1, padding:14, background:"transparent", border:"1px solid #2E2E2E", borderRadius:10, color:"#9A9A9A", fontFamily:"var(--cq-meta)", fontSize:13, cursor:"pointer" }}>← Back</button>
+          <button onClick={handleNext} disabled={!canProceed()} className="cq-focus" style={{ flex:2, padding:14, background:canProceed()?"#F0A500":"#2E2E2E", border:"none", borderRadius:10, color:canProceed()?"#111111":"#666666", fontFamily:"var(--cq-meta)", fontWeight:"bold", fontSize:13, cursor:canProceed()?"pointer":"not-allowed", letterSpacing:1, transition:"all 0.2s ease" }}>
             {step === 4 ? "See My Review →" : step === 0 ? "Start →" : "Next →"}
           </button>
         </div>

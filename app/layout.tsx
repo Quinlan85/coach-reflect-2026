@@ -1,4 +1,10 @@
 import type { Metadata, Viewport } from "next";
+// Geist via the official package rather than next/font/google: this app runs
+// Next 14, whose bundled Google font list predates Geist entirely. The package
+// self-hosts the same faces and needs no network at build time.
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import "./globals.css";
 export const metadata: Metadata = {
   title: "Coach Reflection | CQ",
   description: "Coach reflection tool",
@@ -40,7 +46,7 @@ export const viewport: Viewport = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>{children}</body>
     </html>
   );
